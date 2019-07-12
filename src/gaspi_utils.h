@@ -37,14 +37,11 @@
 #define GASPI_BARRIER gaspi_barrier(GASPI_GROUP_ALL, GASPI_BLOCK)
 
 /** Prints a timestamp into the stream with the format `[HH:MM:SS]`. */
-static std::ostream* timestamp(std::ostream* stream){
+static std::ostream& timestamp(std::ostream& stream){
     const auto t = time(nullptr);
     auto time_m = localtime(&t);
-    *stream << '[' << time_m->tm_hour << ':' << time_m->tm_min << ':' << time_m->tm_sec << ']';
-    return stream;
+    return stream << '[' << time_m->tm_hour << ':' << time_m->tm_min << ':' << time_m->tm_sec << ']';
 }
-
-#define println(p) { *println_timestamp(OUTPUT) << info->id << ": " << p << std::endl << std::flush; } 
 
 /** Returns the amount of seconds since epoch. */
 inline double get_time(){

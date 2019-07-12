@@ -16,6 +16,8 @@
 #define PROC0 0
 #define QUEUE0 0
 
+#define SEGMENT_ID_TEST 2
+
 #define NOTIF_ID_ISSERVER       1
 #define NOTIF_ID_ISCLIENT       2
 #define NOTIF_ID_LAST_SERVER    3
@@ -38,6 +40,12 @@ struct IntraComm {
     IntraComm(gaspi_size_t currentTable, gaspi_size_t currentRow) : currentTable(currentTable), currentRow(currentRow) {}
     IntraComm() = default;
 };
+
+
+static inline gaspi_rank_t getRankOfTable(lazygaspi_id_t tableID, gaspi_rank_t n){
+    return tableID % n;
+};
+
 
 struct Location{
     //The rank of the server that contains the row.

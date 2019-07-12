@@ -128,12 +128,15 @@ static gaspi_return_t gaspi_wait_for_queue(gaspi_queue_id_t q, int min, int* fre
  * Returns:
  * A pointer to the segment.
  */
-static gaspi_pointer_t gaspi_malloc(gaspi_segment_id_t seg, gaspi_size_t size) {
-    SUCCESS_OR_DIE(gaspi_segment_create(seg, size, GASPI_GROUP_ALL, 
-                                  GASPI_BLOCK, GASPI_MEM_UNINITIALIZED));
-    gaspi_pointer_t ptr;
-    SUCCESS_OR_DIE(gaspi_segment_ptr(seg, &ptr));
-    return ptr;
+template<typename T>
+static gaspi_return_t gaspi_malloc(gaspi_segment_id_t seg, gaspi_size_t size, T* ptr) {
+    auto r = gaspi_segment_create(seg, size, GASPI_GROUP_ALL, GASPI_BLOCK, GASPI_MEM_UNINITIALIZED);
+    if(r != GASPI_SUCCESS) return r;
+
+    gaspi_pointer_t ptr_generic;
+    r = gaspi_segment_ptr(seg, &ptr_generic);
+    *ptr = ptr_generic;
+    return r;
 }
 
 /**Allocates a new segment and registers it with all other ranks. Does not hit a barrier, unlike 
@@ -169,10 +172,15 @@ static gaspi_return_t gaspi_segment_create_noblock(gaspi_segment_id_t seg, gaspi
  * Returns:
  * GASPI_SUCCESS on success, GASPI_ERROR (or another error code) on error, GASPI_TIMEOUT on timeout. 
  */
-static gaspi_return_t gaspi_malloc_noblock(gaspi_segment_id_t seg, gaspi_size_t size, gaspi_pointer_t* ptr){
-    auto r = gaspi_segment_create_noblock(seg, size);
+template<typename T>
+static gaspi_return_t gaspi_malloc_noblock(gaspi_segment_id_t seg, gaspi_size_t size, T* ptr,
+                                           gaspi_alloc_policy_flags policy = GASPI_MEM_UNINITIALIZED){
+    auto r = gaspi_segment_create_noblock(seg, size, policy);
     if(r != GASPI_SUCCESS) return r;
-    return gaspi_segment_ptr(seg, ptr);
+    gaspi_pointer_t ptr_generic;
+    r = gaspi_segment_ptr(seg, &ptr_generic);
+    ptr = (T*)ptr_generic;
+    return r;
 }
 /** A SizeReductor function is meant to reduce the size of an attempted allocation.
  * 
@@ -252,15 +260,19 @@ static gaspi_return_t get_notification(gaspi_segment_id_t seg, gaspi_notificatio
 }
 
 /** Sends a notification. 
- * 
+ * Parameters:
+ * seg      - The segment that the notification will be sent to.
+* rank      - The rank that contains the segment.
+ * id       - The notification's ID.
+ * val      - The notification's value.
+ * q        - The queue into which the notification will be posted.
+ * timeout  - The timeout used in `gaspi_notify`.
  */
 static gaspi_return_t send_notification(gaspi_segment_id_t seg, gaspi_rank_t rank, gaspi_notification_id_t id, 
                                         gaspi_notification_t val = 1, gaspi_queue_id_t q = 0, gaspi_timeout_t timeout = GASPI_BLOCK){
     int free;
     auto r = gaspi_wait_for_queue(q, 1, &free); if(r != GASPI_SUCCESS) return r;
-    r = gaspi_notify(seg, rank, id, val, q, timeout); if(r != GASPI_SUCCESS) return r;
-
-    return r;
+    return gaspi_notify(seg, rank, id, val, q, timeout);
 }
 
 /** Reads from one segment to another. Waits for the given queue to empty, guaranteed that the read request was fulfilled.

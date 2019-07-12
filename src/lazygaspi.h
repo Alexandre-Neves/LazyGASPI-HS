@@ -4,13 +4,18 @@
 #include <GASPI.h>
 
 #define SEGMENT_ID_INFO 0 
+#define SEGMENT_ID_ROWS 1
+#define SEGMENT_ID_CACHE 2
 
-typedef enum{
-    LG_SUCCESS,
-    LG_GASPI_ERROR,
-    LG_NOT_ENOUGH_MEMORY
-} lazygaspi_return_t;
+typedef unsigned long lazygaspi_id_t;
 
+struct LazyGaspiProcessInfo{
+    gaspi_rank_t id, n;
+};
+
+struct LazyGaspiRowData{
+
+};
 
 /** Initializes LazyGASPI.
  *  Parameters:
@@ -18,6 +23,6 @@ typedef enum{
  *  table_amount - The amount of tables.
  *  row_size     - The size of a row, in bytes.
  */
-lazygaspi_return_t lazygaspi_init(gaspi_offset_t table_size, gaspi_offset_t table_amount, gaspi_size_t row_size);
+gaspi_return_t lazygaspi_init(lazygaspi_id_t table_size, lazygaspi_id_t table_amount, gaspi_size_t row_size);
 
 #endif

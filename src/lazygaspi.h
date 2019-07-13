@@ -11,6 +11,7 @@ typedef unsigned long lazygaspi_id_t;
 typedef unsigned long lazygaspi_age_t;
 typedef unsigned long lazygaspi_slack_t;
 
+//None of the fields in this structure should be altered. Use only for reading.
 struct LazyGaspiProcessInfo{
     //Value returned by gaspi_proc_rank.
     gaspi_rank_t id;
@@ -44,6 +45,7 @@ struct LazyGaspiRowData{
  * 
  *  Returns:
  *  GASPI_SUCCESS on success, GASPI_ERROR (or another error code) on error, GASPI_TIMEOUT on timeout.
+ *  GASPI_ERR_INV_NUM indicates that at least one of the three parameters was 0.
  */
 gaspi_return_t lazygaspi_init(lazygaspi_id_t table_size, lazygaspi_id_t table_amount, gaspi_size_t row_size);
 
@@ -76,5 +78,19 @@ gaspi_return_t lazygaspi_fulfil_prefetches();
  *  GASPI_ERR_INV_NUM is returned if either row_id or table_id are invalid.
  */
 gaspi_return_t lazygaspi_prefetch(lazygaspi_id_t row_id, lazygaspi_id_t table_id, lazygaspi_slack_t slack);
+
+/** Reads a row, whose age is within the given slack.
+ * 
+ *  Parameters:
+ *  row_id - The row's ID.
+ *  table_id - The ID of the row's table.
+ *  slack    - The slack allowed for the row that will be read.
+ *  row      - Output parameter for the row. Size of the data read will be the same as the parameter passed to lazygaspi_init.
+ *  data     - Output parameter for the metadata tag associated with the read row. Use nullptr to ignore.
+ *  Returns:
+ *  GASPI_SUCCESS on success, GASPI_ERROR (or another error code) on error, GASPI_TIMEOUT on timeout.
+ *  GASPI_ERR_INV_NUM is returned if either row_id or table_id are invalid.
+ */
+gaspi_return_t lazygaspi_read(lazygaspi_id_t row_id, lazygaspi_id_t table_id, lazygaspi_slack_t slack, void* row, LazyGaspiRowData* data = nullptr);
 
 #endif

@@ -21,16 +21,16 @@ gaspi_return_t lazygaspi_read(lazygaspi_id_t row_id, lazygaspi_id_t table_id, la
 
     auto offset = get_offset_in_cache(info, row_id);
     auto rowData = (LazyGaspiRowData*)((char*)cache + offset);
-    if(rowData->age >= min){
-        memcpy(row, (void*)((char*)rowData + sizeof(LazyGaspiRowData)), info->row_size);
-        if(data) *data = *rowData;
-        return GASPI_SUCCESS;
-    }
 
     auto rank = get_rank_of_table(table_id, info->n);
     auto offset_other = get_offset_in_rows_segment(info, row_id, table_id);
 
-    for(; read(SEGMENT_ID_ROWS, SEGMENT_ID_CACHE, offset_other, offset, ); rowData->age >= min){
+    for(; rowData->age < min; r = read(SEGMENT_ID_ROWS, SEGMENT_ID_CACHE, offset_other, offset, sizeof(LazyGaspiRowData) + 
+                                                                                                info->row_size, rank))
+        ERROR_CHECK;
 
-    }
+    memcpy(row, (void*)((char*)rowData + sizeof(LazyGaspiRowData)), info->row_size);
+    if(data) *data = *rowData;
+
+    return GASPI_SUCCESS;
 }

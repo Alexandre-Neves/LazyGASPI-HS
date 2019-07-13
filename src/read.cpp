@@ -8,6 +8,8 @@
 
 gaspi_return_t lazygaspi_read(lazygaspi_id_t row_id, lazygaspi_id_t table_id, lazygaspi_slack_t slack, void* row,
                               LazyGaspiRowData* data){
+    if(row == nullptr) return GASPI_ERR_NULLPTR;
+
     LazyGaspiProcessInfo* info;
     auto r = lazygaspi_get_info(&info); ERROR_CHECK;
 

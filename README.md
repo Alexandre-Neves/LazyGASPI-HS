@@ -1,5 +1,6 @@
-Implementation of:
-- lazygaspi_init                at init.cpp
-- lazygaspi_get_info            at general.cpp
-- lazygaspi_fulfil_prefetches   at prefetch.cpp
-- lazygaspi_prefetch            at prefetch.cpp
+| # Implementation of:          | at           |
+| ----------------------------- |:------------:| 
+| lazygaspi_init                | init.cpp     |
+| lazygaspi_get_info            | general.cpp  |
+| lazygaspi_fulfil_prefetches   | prefetch.cpp |
+| lazygaspi_prefetch            | prefetch.cpp |

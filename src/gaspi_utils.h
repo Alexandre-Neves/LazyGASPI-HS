@@ -279,7 +279,7 @@ static gaspi_return_t send_notification(gaspi_segment_id_t seg, gaspi_rank_t ran
     return gaspi_notify(seg, rank, id, val, q, timeout);
 }
 
-/** Reads from one segment to another. Waits for the given queue to empty, guaranteed that the read request was fulfilled.
+/** Reads from one segment to another. Waits for the given queue to empty, guaranteeing that the read request was fulfilled.
  * 
  *  Parameter:
  *  from         - The segment from which the data will be read.

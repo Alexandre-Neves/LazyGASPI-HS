@@ -34,6 +34,9 @@ struct LazyGaspiRowData{
     lazygaspi_age_t age;
     lazygaspi_id_t row_id;
     lazygaspi_id_t table_id;
+
+    LazyGaspiRowData(lazygaspi_id_t row_id, lazygaspi_id_t table_id, lazygaspi_age_t age) : 
+                    row_id(row_id), table_id(table_id), age(age) {};
 };
 
 /** Initializes LazyGASPI.
@@ -59,7 +62,8 @@ gaspi_return_t lazygaspi_init(lazygaspi_id_t table_size, lazygaspi_id_t table_am
  */
 gaspi_return_t lazygaspi_get_info(LazyGaspiProcessInfo** info);
 
-/** Fulfils prefetch requests from other ranks.
+/** Fulfils prefetch requests from other ranks. 
+ *  Must be called by all processes at the end of each iteration for prefetching to work properly.
  *  
  *  Returns:
  *  GASPI_SUCCESS on success, GASPI_ERROR (or another error code) on error, GASPI_TIMEOUT on timeout. 
@@ -90,7 +94,21 @@ gaspi_return_t lazygaspi_prefetch(lazygaspi_id_t row_id, lazygaspi_id_t table_id
  *  Returns:
  *  GASPI_SUCCESS on success, GASPI_ERROR (or another error code) on error, GASPI_TIMEOUT on timeout.
  *  GASPI_ERR_INV_NUM is returned if either row_id or table_id are invalid.
+ *  GASPI_ERR_NULLPTR is returned if row is a nullptr.
  */
 gaspi_return_t lazygaspi_read(lazygaspi_id_t row_id, lazygaspi_id_t table_id, lazygaspi_slack_t slack, void* row, LazyGaspiRowData* data = nullptr);
 
+/** Writes the given row in the appropriate server.
+ *  
+ *  Parameters:
+ *  row_id   - The row's ID.
+ *  table_id - The ID of the row's table.
+ *  row      - A pointer to the row's data. Size is assumed to be the same as the size passed to lazygaspi_init.
+ * 
+ *  Returns:
+ *  GASPI_SUCCESS on success, GASPI_ERROR (or another error code) on error, GASPI_TIMEOUT on timeout.
+ *  GASPI_ERR_INV_NUM is returned if either row_id or table_id are invalid.
+ *  GASPI_ERR_NULLPTR is returned if row is a nullptr.
+ */
+gaspi_return_t lazygaspi_write(lazygaspi_id_t row_id, lazygaspi_id_t table_id, void* row);
 #endif

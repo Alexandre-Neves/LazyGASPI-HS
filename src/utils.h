@@ -49,6 +49,10 @@ static inline gaspi_rank_t get_rank_of_table(lazygaspi_id_t table_id, gaspi_rank
     return table_id % n;
 };
 
+static inline unsigned long get_table_amount(gaspi_offset_t table_amount, gaspi_rank_t rank_amount, gaspi_rank_t rank){
+    return table_amount / rank_amount + (unsigned long)(rank < table_amount % rank_amount);
+}
+
 /** Returns the amount of rows in the given rank's rows segment. 
  *  Table amount can be obtained by dividing by the amount of rows in one table.
  * 
@@ -60,7 +64,7 @@ static inline gaspi_rank_t get_rank_of_table(lazygaspi_id_t table_id, gaspi_rank
  */
 static inline unsigned long get_row_amount(gaspi_offset_t table_size, gaspi_offset_t table_amount, gaspi_rank_t rank_amount, 
                                            gaspi_rank_t rank){
-    return (table_amount / rank_amount + (unsigned long)(rank < table_amount % rank_amount)) * table_size;
+    return get_table_amount(table_amount, rank_amount, rank) * table_size;
 }
 
 /** Returns the minimum age for the current prefetch. 0 indicates no prefetching should occur. Resets flag to 0.
@@ -88,6 +92,11 @@ static inline lazygaspi_age_t get_prefetch(const LazyGaspiProcessInfo* info, con
  */
 static inline gaspi_offset_t get_offset_in_cache(LazyGaspiProcessInfo* info, lazygaspi_id_t row_id){
     return row_id * (sizeof(LazyGaspiRowData) + info->row_size);
+}
+
+static inline gaspi_offset_t get_offset_in_rows_segment(LazyGaspiProcessInfo* info, lazygaspi_id_t row_id, lazygaspi_id_t table_id){
+    return (info->table_size * (table_id / info->n) + row_id) * 
+           (sizeof(LazyGaspiRowData) + info->row_size + info->n * sizeof(lazygaspi_age_t));
 }
 
 struct Location{

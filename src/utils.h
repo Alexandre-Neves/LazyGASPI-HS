@@ -41,15 +41,56 @@ struct IntraComm {
     IntraComm() = default;
 };
 
+static inline lazygaspi_age_t get_min_age(lazygaspi_age_t current, lazygaspi_age_t slack){
+    return current < slack + 2 ? 1 : current - slack - 1;
+}
 
-static inline gaspi_rank_t getRankOfTable(lazygaspi_id_t tableID, gaspi_rank_t n){
-    return tableID % n;
+static inline gaspi_rank_t get_rank_of_table(lazygaspi_id_t table_id, gaspi_rank_t n){
+    return table_id % n;
 };
 
+/** Returns the amount of rows in the given rank's rows segment. 
+ *  Table amount can be obtained by dividing by the amount of rows in one table.
+ * 
+ *  Parameters:
+ *  table_size   - The size of one table, in rows.
+ *  table_amount - The total amount of tables that will exist throughout all processes.
+ *  rank_amount  - The total amount of ranks, per gaspi_proc_num.
+ *  rank         - The current rank.
+ */
+static inline unsigned long get_row_amount(gaspi_offset_t table_size, gaspi_offset_t table_amount, gaspi_rank_t rank_amount, 
+                                           gaspi_rank_t rank){
+    return (table_amount / rank_amount + (unsigned long)(rank < table_amount % rank_amount)) * table_size;
+}
+
+/** Returns the minimum age for the current prefetch. 0 indicates no prefetching should occur. Resets flag to 0.
+ * 
+ *  Parameters:
+ *  info - A pointer to the "info" segment.
+ *  rows - A pointer to the "rows" segment.
+ *  row  - The offset, in bytes, of the rows table entry that contains the row and prefetch flags.
+ *  rank - The rank to check for the prefetch flag.
+ */
+static inline lazygaspi_age_t get_prefetch(const LazyGaspiProcessInfo* info, const gaspi_pointer_t rows, const gaspi_offset_t row, const gaspi_rank_t rank){
+    auto flag = (lazygaspi_age_t*)((bool*)rows + sizeof(LazyGaspiRowData) + info->row_size + rank * sizeof(lazygaspi_age_t)); 
+    if(*flag){
+        auto temp = *flag;
+        *flag = 0;
+        return temp;
+    }
+    return 0;
+}
+
+/** Returns the offset, in bytes, of a given row in the cache.
+ *  Parameters:
+ *  info - A pointer to the "info" segment.
+ *  row_id - The row's ID.
+ */
+static inline gaspi_offset_t get_offset_in_cache(LazyGaspiProcessInfo* info, lazygaspi_id_t row_id){
+    return row_id * (sizeof(LazyGaspiRowData) + info->row_size);
+}
 
 struct Location{
-    //The rank of the server that contains the row.
-    gaspi_rank_t rank;
     //The offset of the intended row inside the rows table, in bytes.
     gaspi_offset_t offset;
 };

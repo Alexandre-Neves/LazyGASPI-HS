@@ -49,17 +49,17 @@ inline double get_time(){
                                                                      time_since_epoch()).count(); 
 }
 
-/**Sets up the default file output stream for print messages.
- * Hits a barrier of the provided group. Default is all ranks.
+/** Sets up the default file output stream for print messages.
+ *  Hits a barrier of the provided group. Default is all ranks.
  * 
- * Parameters:
- * identifier - A C string containing the identifier of the program. Does not need to be unique to each rank.
- * id         - The rank of the current process.
- * stream     - Output parameter for the newly created output stream.
- * group      - The group of ranks that must hit the barrier.
+ *  Parameters:
+ *  identifier - A C string containing the identifier of the program. Does not need to be unique to each rank.
+ *  id         - The rank of the current process.
+ *  stream     - Output parameter for the newly created output stream.
+ *  group      - The group of ranks that must hit the barrier.
  * 
- * Returns:
- * GASPI_SUCCESS on success, GASPI_ERROR (or other error codes) on error, or GASPI_TIMEOUT on timeout.
+ *  Returns:
+ *  GASPI_SUCCESS on success, GASPI_ERROR (or other error codes) on error, or GASPI_TIMEOUT on timeout.
  */
 static gaspi_return_t setup_gaspi_output(const char* identifier, gaspi_rank_t id, std::ofstream** stream, 
                                          gaspi_group_t group = GASPI_GROUP_ALL){
@@ -79,12 +79,12 @@ static gaspi_return_t setup_gaspi_output(const char* identifier, gaspi_rank_t id
 
 /** Returns how many requests can be posted to a given queue.
  * 
- * Parameters:
- * q    - The queue.
- * free - Output parameters for the amount of requests that can be posted.
+ *  Parameters:
+ *  q    - The queue.
+ *  free - Output parameters for the amount of requests that can be posted.
  * 
- * Returns:
- * GASPI_SUCCESS on success, GASPI_ERROR (or other error codes) on error, or GASPI_TIMEOUT on timeout.
+ *  Returns:
+ *  GASPI_SUCCESS on success, GASPI_ERROR (or other error codes) on error, or GASPI_TIMEOUT on timeout.
  */
 static gaspi_return_t gaspi_free(gaspi_queue_id_t q, int* free) {
     gaspi_number_t queue_size, queue_max;
@@ -98,15 +98,15 @@ static gaspi_return_t gaspi_free(gaspi_queue_id_t q, int* free) {
     *free = queue_max - queue_size;
     return GASPI_SUCCESS;
 }
-/**Waits for a queue to have enough room for new requests.
+/** Waits for a queue to have enough room for new requests.
  * 
- * Parameters:
- * q    - The queue to wait for.
- * min  - The minimum amount of requests that can be posted to the queue after returning.
- * free - Output parameter for the amount of requests that can actually be posted. Use nullptr to ignore
- * 
- * Returns:
- * GASPI_SUCCESS on success, GASPI_ERROR (or other error codes) on error, or GASPI_TIMEOUT on timeout.
+ *  Parameters:
+ *  q    - The queue to wait for.
+ *  min  - The minimum amount of requests that can be posted to the queue after returning.
+ *  free - Output parameter for the amount of requests that can actually be posted. Use nullptr to ignore
+ *  
+ *  Returns:
+ *  GASPI_SUCCESS on success, GASPI_ERROR (or other error codes) on error, or GASPI_TIMEOUT on timeout.
  */
 static gaspi_return_t gaspi_wait_for_queue(gaspi_queue_id_t q, int min, int* free = nullptr) {
     int f;
@@ -260,13 +260,17 @@ static gaspi_return_t get_notification(gaspi_segment_id_t seg, gaspi_notificatio
 }
 
 /** Sends a notification. 
- * Parameters:
- * seg      - The segment that the notification will be sent to.
-* rank      - The rank that contains the segment.
- * id       - The notification's ID.
- * val      - The notification's value.
- * q        - The queue into which the notification will be posted.
- * timeout  - The timeout used in `gaspi_notify`.
+ * 
+ *  Parameters:
+ *  seg      - The segment that the notification will be sent to.
+ *  rank      - The rank that contains the segment.
+ *  id       - The notification's ID.
+ *  val      - The notification's value.
+ *  q        - The queue into which the notification will be posted.
+ *  timeout  - The timeout used in `gaspi_notify`.
+ * 
+ *  Returns:
+ *  GASPI_SUCCESS on success, GASPI_ERROR (or another error code) on error, GASPI_TIMEOUT on timeout.
  */
 static gaspi_return_t send_notification(gaspi_segment_id_t seg, gaspi_rank_t rank, gaspi_notification_id_t id, 
                                         gaspi_notification_t val = 1, gaspi_queue_id_t q = 0, gaspi_timeout_t timeout = GASPI_BLOCK){

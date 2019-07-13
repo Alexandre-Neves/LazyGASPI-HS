@@ -5,8 +5,14 @@
 #define ERROR_CHECK if(r != GASPI_SUCCESS) return r
 
 gaspi_return_t lazygaspi_fulfil_prefetches(){
+
+    Notification notif;
+    auto r = get_notification(SEGMENT_ID_ROWS, NOTIF_ID_ROW_WRITTEN, 1, &notif, GASPI_TEST);
+    if(r == GASPI_TIMEOUT) return GASPI_SUCCESS;    //No "new row" notice, no prefetching necessary.
+    ERROR_CHECK;
+
     LazyGaspiProcessInfo* info;
-    auto r = lazygaspi_get_info(&info); ERROR_CHECK;
+    r = lazygaspi_get_info(&info); ERROR_CHECK;
 
     gaspi_pointer_t rows_table;
     r = gaspi_segment_ptr(SEGMENT_ID_ROWS, &rows_table); ERROR_CHECK;

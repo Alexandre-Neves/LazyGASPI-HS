@@ -13,19 +13,7 @@
 #include "typedefs.h"
 #include "lazygaspi.h"
 
-#define PROC0 0
-#define QUEUE0 0
-
-#define SEGMENT_ID_TEST 2
-
-#define NOTIF_ID_ISSERVER       1
-#define NOTIF_ID_ISCLIENT       2
-#define NOTIF_ID_LAST_SERVER    3
-#define NOTIF_ID_INTRACOMM      4
-#define NOTIF_ID_UPDATE_SUBMITTED 5
-#define NOTIF_ID_TERM_PROGRAM   6
-
-#define NOTIF_AMOUNT_SERVER 2
+#define NOTIF_ID_ROW_WRITTEN 0
 
 struct RowLocationEntry{
     gaspi_rank_t rank;

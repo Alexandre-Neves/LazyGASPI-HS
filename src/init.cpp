@@ -18,13 +18,14 @@ gaspi_return_t lazygaspi_init(lazygaspi_id_t table_size, lazygaspi_id_t table_am
     info->row_size = row_size;
     info->table_amount = table_amount;
     info->table_size = table_size;
+    info->out = nullptr;
 
     return GASPI_SUCCESS;
 }
 
 gaspi_return_t allocate_segments(lazygaspi_id_t table_size, lazygaspi_id_t table_amount, gaspi_size_t row_size, 
                                  LazyGaspiProcessInfo** info){
-    auto r = gaspi_malloc_noblock(SEGMENT_ID_INFO, sizeof(LazyGaspiProcessInfo), info); ERROR_CHECK;
+    auto r = gaspi_malloc_noblock(SEGMENT_ID_INFO, sizeof(LazyGaspiProcessInfo), info, GASPI_MEM_INITIALIZED); ERROR_CHECK;
 
     r = gaspi_proc_num(&((*info)->n)); ERROR_CHECK;
     r = gaspi_proc_rank(&((*info)->id)); ERROR_CHECK;

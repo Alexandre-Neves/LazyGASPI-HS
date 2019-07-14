@@ -6,3 +6,5 @@
 | lazygaspi_prefetch            | prefetch.cpp  |
 | lazygaspi_read                | read.cpp      |
 | lazygaspi_write               | write.cpp     |
+| lazygaspi_clock               | general.cpp   |
+| lazygaspi_term                | general.cpp   |

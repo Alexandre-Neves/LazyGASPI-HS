@@ -11,7 +11,7 @@ typedef unsigned long lazygaspi_id_t;
 typedef unsigned long lazygaspi_age_t;
 typedef unsigned long lazygaspi_slack_t;
 
-//None of the fields in this structure should be altered. Use only for reading.
+//None of the fields in this structure should be altered, except for the out field.
 struct LazyGaspiProcessInfo{
     //Value returned by gaspi_proc_rank.
     gaspi_rank_t id;
@@ -28,6 +28,8 @@ struct LazyGaspiProcessInfo{
     gaspi_size_t row_size;
     //Field used for communication with other segments.
     lazygaspi_age_t communicator;
+    //Stream used to output lazygaspi debug messages. Use nullptr to ignore lazygaspi output.
+    std::ofstream* out;
 };
 
 struct LazyGaspiRowData{

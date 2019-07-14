@@ -69,7 +69,7 @@ static gaspi_return_t setup_gaspi_output(const char* identifier, gaspi_rank_t id
 
     auto r = GASPI_BARRIER; if(r != GASPI_SUCCESS) return r;
 
-    s.clear();
+    s = std::stringstream();
     s << identifier << '_' << id << ".out"; 
     *stream = new std::ofstream(s.str());
     if(*stream == nullptr) return GASPI_ERR_MEMALLOC;
@@ -179,7 +179,7 @@ static gaspi_return_t gaspi_malloc_noblock(gaspi_segment_id_t seg, gaspi_size_t 
     if(r != GASPI_SUCCESS) return r;
     gaspi_pointer_t ptr_generic;
     r = gaspi_segment_ptr(seg, &ptr_generic);
-    ptr = (T*)ptr_generic;
+    *ptr = (T)ptr_generic;
     return r;
 }
 /** A SizeReductor function is meant to reduce the size of an attempted allocation.
@@ -255,6 +255,7 @@ static gaspi_return_t get_notification(gaspi_segment_id_t seg, gaspi_notificatio
     case GASPI_SUCCESS:
         return gaspi_notify_reset(seg, notif->first, &(notif->val));
     default:
+        break;
     }        
     return r;  
 }
@@ -279,7 +280,7 @@ static gaspi_return_t send_notification(gaspi_segment_id_t seg, gaspi_rank_t ran
     return gaspi_notify(seg, rank, id, val, q, timeout);
 }
 
-/** Reads from one segment to another. Waits for the given queue to empty, guaranteeing that the read request was fulfilled.
+/** Reads from one segment to another. Waits for the given queue to empty, guaranteeing  that the read request was fulfilled.
  * 
  *  Parameter:
  *  from         - The segment from which the data will be read.

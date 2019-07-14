@@ -16,7 +16,7 @@
 #define NOTIF_ID_ROW_WRITTEN 0
 
 #ifdef DEBUG
-#define PRINT_DEBUG(msg) if(info->out) timestamp(*info->out) << msg << std::endl
+#define PRINT_DEBUG(msg) if(info->out) timestamp(*info->out) << " Rank " << info->id << " => " << msg << std::endl
 #else
 #define PRINT_DEBUG(msg)
 #endif

@@ -40,7 +40,7 @@
 static std::ostream& timestamp(std::ostream& stream){
     const auto t = time(nullptr);
     auto time_m = localtime(&t);
-    return stream << '[' << time_m->tm_hour << ':' << time_m->tm_min << ':' << time_m->tm_sec << ']';
+    return stream << '[' << time_m->tm_hour << ':' << time_m->tm_min << ':' << time_m->tm_sec << "] ";
 }
 
 /** Returns the amount of seconds since epoch. */

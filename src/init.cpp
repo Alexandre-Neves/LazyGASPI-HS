@@ -2,12 +2,13 @@
 #include "gaspi_utils.h"
 #include "utils.h"
 
-#define ERROR_CHECK if(r != GASPI_SUCCESS) return r
+#define ERROR_CHECK { if(r != GASPI_SUCCESS){ std::cout << "Error " << r << " at " << __FILE__ << ':' << __LINE__ << std::endl; return r; }}
 
 /* Allocates: info; rows; cache. Sets n and id for info. Hits barrier for all. */
-LazyGaspiProcessInfo* allocate_segments(gaspi_offset_t table_size, gaspi_offset_t table_amount, gaspi_size_t row_size);
+gaspi_return_t allocate_segments(gaspi_offset_t table_size, gaspi_offset_t table_amount, gaspi_size_t row_size, LazyGaspiProcessInfo** info);
 
 gaspi_return_t lazygaspi_init(lazygaspi_id_t table_size, lazygaspi_id_t table_amount, gaspi_size_t row_size){
+
     if(table_size == 0 || table_amount == 0 || row_size == 0) return GASPI_ERR_INV_NUM;
 
     auto r = gaspi_proc_init(GASPI_BLOCK); ERROR_CHECK;
@@ -25,6 +26,7 @@ gaspi_return_t lazygaspi_init(lazygaspi_id_t table_size, lazygaspi_id_t table_am
 
 gaspi_return_t allocate_segments(lazygaspi_id_t table_size, lazygaspi_id_t table_amount, gaspi_size_t row_size, 
                                  LazyGaspiProcessInfo** info){
+
     auto r = gaspi_malloc_noblock(SEGMENT_ID_INFO, sizeof(LazyGaspiProcessInfo), info, GASPI_MEM_INITIALIZED); ERROR_CHECK;
 
     r = gaspi_proc_num(&((*info)->n)); ERROR_CHECK;

@@ -111,4 +111,18 @@ gaspi_return_t lazygaspi_read(lazygaspi_id_t row_id, lazygaspi_id_t table_id, la
  *  GASPI_ERR_NULLPTR is returned if row is a nullptr.
  */
 gaspi_return_t lazygaspi_write(lazygaspi_id_t row_id, lazygaspi_id_t table_id, void* row);
+
+/** Increments the current process's age by 1.
+ * 
+ *  Returns:
+ *  GASPI_SUCCESS on success, GASPI_ERROR (or another error code) on error, GASPI_TIMEOUT on timeout.
+ */
+gaspi_return_t lazygaspi_clock();
+
+/* Terminates LazyGASPI. 
+ *
+ * Returns:
+ * GASPI_SUCCESS on success, GASPI_ERROR (or another error code) on error, GASPI_TIMEOUT on timeout.
+ */
+gaspi_return_t lazygaspi_term();
 #endif

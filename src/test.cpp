@@ -14,7 +14,6 @@
 
 #define SLACK 2
 
-#define DEBUG
 
 #include <vector>
 
@@ -30,9 +29,10 @@ int main(int argc, char** argv){
 
     auto in_charge = std::vector<std::pair<lazygaspi_id_t, lazygaspi_id_t>>(round(TABLE_SIZE / info->n) * TABLE_AMOUNT);
 
+    size_t index = 0;
     for(lazygaspi_id_t table = 0; table < TABLE_AMOUNT; table++) {
         for(lazygaspi_id_t row_id = (info->id + info->n - table % info->n) % info->n; row_id < TABLE_SIZE; row_id += info->n){
-            in_charge.push_back(std::make_pair(row_id, table));
+            in_charge.at(index++) = std::make_pair(row_id, table);
         }
     }
 
@@ -59,14 +59,13 @@ int main(int argc, char** argv){
         //Computation
         const auto size = in_charge.size();
         for(size_t i = 0; i < size; i++){
-            if(t != 1){
-                rows[i] = ROW().setZero();
-            }
+            if(t == 1) rows[i] = ROW().setZero(); 
             else{
                 SUCCESS_OR_DIE(lazygaspi_read((in_charge.at(i).first + 1) % TABLE_SIZE, (in_charge.at(i).second + 1) % TABLE_AMOUNT, 
                                                 SLACK, &other, &data));
                 PRINT_DEBUG("| TEST | Read row after " << in_charge.at(i).first << " and after table " << in_charge.at(i).second << 
                             ", with age " << data.age << '.');
+                rows[i](0, (t - 2) % ROW_ENTRIES) = t;
                 rows[i] += other;
             }
         }   
@@ -74,6 +73,7 @@ int main(int argc, char** argv){
         //Write
         for(size_t i = 0; i < size; i++){
             SUCCESS_OR_DIE(lazygaspi_write(in_charge.at(i).first, in_charge.at(i).second, rows + i));
+            PRINT_DEBUG("Wrote " << rows[i]);
         }
 
         //Fulfil prefetches
@@ -82,7 +82,7 @@ int main(int argc, char** argv){
 
     PRINT_DEBUG("| TEST | Finished computation.");
 
-    GASPI_BARRIER;
+    SUCCESS_OR_DIE(GASPI_BARRIER);
 
     PRINT_DEBUG("| TEST | All finished.");
 
@@ -91,6 +91,8 @@ int main(int argc, char** argv){
             lazygaspi_read(i, info->id, SLACK, &other);
             PRINT_DEBUG(other);
         }
+
+    SUCCESS_OR_DIE(GASPI_BARRIER);
 
     SUCCESS_OR_DIE(lazygaspi_term());
 

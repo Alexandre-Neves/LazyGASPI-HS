@@ -15,6 +15,7 @@ gaspi_return_t lazygaspi_read(lazygaspi_id_t row_id, lazygaspi_id_t table_id, la
 
     if(row_id >= info->table_size || table_id >= info->table_amount) return GASPI_ERR_INV_NUM;
 
+    PRINT_DEBUG("Reading row " << row_id << " of table " << table_id << " with slack " << slack << " with age " << info->age << '.');
     auto min = get_min_age(info->age, slack);
 
     //Check cache.
@@ -27,9 +28,17 @@ gaspi_return_t lazygaspi_read(lazygaspi_id_t row_id, lazygaspi_id_t table_id, la
     auto rank = get_rank_of_table(table_id, info->n);
     auto offset_other = get_offset_in_rows_segment(info, row_id, table_id);
 
+    #ifdef DEBUG
+    if(rowData->age < min) PRINT_DEBUG("Found row in cache.");
+    else                   PRINT_DEBUG("Could not find row in cache... Reading from server.");
+    #endif
+
     for(; rowData->age < min; r = read(SEGMENT_ID_ROWS, SEGMENT_ID_CACHE, offset_other, offset, sizeof(LazyGaspiRowData) + 
                                                                                                 info->row_size, rank))
         ERROR_CHECK;
+    
+
+    PRINT_DEBUG("Found fresh row in server. Age was " << rowData->age);
 
     memcpy(row, (void*)((char*)rowData + sizeof(LazyGaspiRowData)), info->row_size);
     if(data) *data = *rowData;

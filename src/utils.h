@@ -15,11 +15,20 @@
 
 #define NOTIF_ID_ROW_WRITTEN 0
 
-#ifdef DEBUG
+#ifdef DEBUG or defined(DEBUG_INTERNAL)
+#define PRINT_DEBUG_INTERNAL(msg) if(info->out) timestamp(*info->out) << " Rank " << info->id << " => " << msg << std::endl
+#else
+#define PRINT_DEBUG_INTERNAL(msg)
+#endif
+
+#ifdef DEBUG or defined(DEBUG_TEST)
 #define PRINT_DEBUG(msg) if(info->out) timestamp(*info->out) << " Rank " << info->id << " => " << msg << std::endl
 #else
 #define PRINT_DEBUG(msg)
 #endif
+
+//How many different row IDs will be in a cache.
+#define DIFF_ROW_ID_PER_CACHE 4
 
 
 struct RowLocationEntry{
@@ -80,13 +89,18 @@ static inline lazygaspi_age_t get_prefetch(const LazyGaspiProcessInfo* info, con
     return 0;
 }
 
-/** Returns the offset, in bytes, of a given row in the cache.
+static inline gaspi_size_t get_cache_size(gaspi_size_t row_size, lazygaspi_id_t table_amount){
+    return DIFF_ROW_ID_PER_CACHE * table_amount * (sizeof(LazyGaspiRowData) + row_size);
+}
+
+/** Returns the offset, in bytes, of a given row, including metadata, in the cache.
  *  Parameters:
  *  info - A pointer to the "info" segment.
  *  row_id - The row's ID.
+ *  table_id - The table's ID.
  */
-static inline gaspi_offset_t get_offset_in_cache(LazyGaspiProcessInfo* info, lazygaspi_id_t row_id){
-    return row_id * (sizeof(LazyGaspiRowData) + info->row_size);
+static inline gaspi_offset_t get_offset_in_cache(LazyGaspiProcessInfo* info, lazygaspi_id_t row_id, lazygaspi_id_t table_id){
+    return ((row_id % DIFF_ROW_ID_PER_CACHE) * info->table_amount + table_id) * (sizeof(LazyGaspiRowData) + info->row_size);
 }
 
 static inline gaspi_offset_t get_offset_in_rows_segment(LazyGaspiProcessInfo* info, lazygaspi_id_t row_id, lazygaspi_id_t table_id){

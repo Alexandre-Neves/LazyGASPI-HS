@@ -46,15 +46,15 @@ struct LazyGaspiRowData{
 /** Initializes LazyGASPI.
  * 
  *  Parameters:
- *  table_size   - The amount of rows in one table.
  *  table_amount - The amount of tables.
+ *  table_size   - The amount of rows in one table.
  *  row_size     - The size of a row, in bytes.
  * 
  *  Returns:
  *  GASPI_SUCCESS on success, GASPI_ERROR (or another error code) on error, GASPI_TIMEOUT on timeout.
  *  GASPI_ERR_INV_NUM indicates that at least one of the three parameters was 0.
  */
-gaspi_return_t lazygaspi_init(lazygaspi_id_t table_size, lazygaspi_id_t table_amount, gaspi_size_t row_size);
+gaspi_return_t lazygaspi_init(lazygaspi_id_t table_amount, lazygaspi_id_t table_size, gaspi_size_t row_size);
 
 /** Outputs a pointer to the "info" segment.
  *  

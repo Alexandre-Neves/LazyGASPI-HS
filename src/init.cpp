@@ -7,7 +7,7 @@
 /* Allocates: info; rows; cache. Sets n and id for info. Hits barrier for all. */
 gaspi_return_t allocate_segments(gaspi_offset_t table_size, gaspi_offset_t table_amount, gaspi_size_t row_size, LazyGaspiProcessInfo** info);
 
-gaspi_return_t lazygaspi_init(lazygaspi_id_t table_size, lazygaspi_id_t table_amount, gaspi_size_t row_size){
+gaspi_return_t lazygaspi_init(lazygaspi_id_t table_amount, lazygaspi_id_t table_size, gaspi_size_t row_size){
 
     if(table_size == 0 || table_amount == 0 || row_size == 0) return GASPI_ERR_INV_NUM;
 

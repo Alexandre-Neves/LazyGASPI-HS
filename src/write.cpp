@@ -13,11 +13,11 @@ gaspi_return_t lazygaspi_write(lazygaspi_id_t row_id, lazygaspi_id_t table_id, v
 
     if(row_id >= info->table_size || table_id >= info->table_amount) return GASPI_ERR_INV_NUM;
     
-    PRINT_DEBUG("Writing row " << row_id << " from table " << table_id << " to server. Age: " << info->age << '.');
+    PRINT_DEBUG_INTERNAL("Writing row " << row_id << " from table " << table_id << " to server. Age: " << info->age << '.');
 
     auto rank = get_rank_of_table(table_id, info->n);
     auto offset_rows = get_offset_in_rows_segment(info, row_id, table_id);
-    auto offset_cache = get_offset_in_cache(info, row_id);
+    auto offset_cache = get_offset_in_cache(info, row_id, table_id);
 
     //Write to cache.
     gaspi_pointer_t ptr;

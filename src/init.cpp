@@ -40,7 +40,7 @@ gaspi_return_t allocate_segments(lazygaspi_id_t table_size, lazygaspi_id_t table
     ERROR_CHECK;
 
     //An entry for this segment is a metadata tag and the row itself.
-    r = gaspi_segment_create_noblock(SEGMENT_ID_CACHE, (sizeof(LazyGaspiRowData) + row_size) * table_size, GASPI_MEM_INITIALIZED);
+    r = gaspi_segment_create_noblock(SEGMENT_ID_CACHE, get_cache_size(row_size, table_amount), GASPI_MEM_INITIALIZED);
     ERROR_CHECK;
 
     return GASPI_BARRIER;

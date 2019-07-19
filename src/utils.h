@@ -27,10 +27,10 @@
 #define PRINT_DEBUG_TEST(msg)
 #endif
 
-#if (defined (DEBUG) || defined (DEBUG_TIME))
-#define PRINT_DEBUG_TIME(msg) if(info->out) timestamp(*info->out) << " Rank " << info->id << " => " << msg << std::endl
+#if (defined (DEBUG) || defined (DEBUG_PERF))
+#define PRINT_DEBUG_PERF(msg) if(info->out) timestamp(*info->out) << " Rank " << info->id << " => " << msg << std::endl
 #else
-#define PRINT_DEBUG_TIME(msg)
+#define PRINT_DEBUG_PERF(msg)
 #endif
 
 //How many different row IDs will be in a cache.

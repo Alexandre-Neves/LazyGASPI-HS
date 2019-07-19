@@ -15,21 +15,26 @@
 
 #define NOTIF_ID_ROW_WRITTEN 0
 
-#ifdef DEBUG or defined(DEBUG_INTERNAL)
+#if (defined (DEBUG) || defined (DEBUG_INTERNAL))
 #define PRINT_DEBUG_INTERNAL(msg) if(info->out) timestamp(*info->out) << " Rank " << info->id << " => " << msg << std::endl
 #else
 #define PRINT_DEBUG_INTERNAL(msg)
 #endif
 
-#ifdef DEBUG or defined(DEBUG_TEST)
-#define PRINT_DEBUG(msg) if(info->out) timestamp(*info->out) << " Rank " << info->id << " => " << msg << std::endl
+#if (defined (DEBUG) || defined (DEBUG_TEST))
+#define PRINT_DEBUG_TEST(msg) if(info->out) timestamp(*info->out) << " Rank " << info->id << " => " << msg << std::endl
 #else
-#define PRINT_DEBUG(msg)
+#define PRINT_DEBUG_TEST(msg)
+#endif
+
+#if (defined (DEBUG) || defined (DEBUG_TIME))
+#define PRINT_DEBUG_TIME(msg) if(info->out) timestamp(*info->out) << " Rank " << info->id << " => " << msg << std::endl
+#else
+#define PRINT_DEBUG_TIME(msg)
 #endif
 
 //How many different row IDs will be in a cache.
 #define DIFF_ROW_ID_PER_CACHE 4
-
 
 struct RowLocationEntry{
     gaspi_rank_t rank;

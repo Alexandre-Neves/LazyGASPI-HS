@@ -73,7 +73,7 @@ int main(int argc, char** argv){
     LazyGaspiProcessInfo* info;
     SUCCESS_OR_DIE(lazygaspi_get_info(&info));
 
-    SUCCESS_OR_DIE(setup_gaspi_output("lazygaspi_hs", info->id, &(info->out)));
+    SUCCESS_OR_DIE(gaspi_setup_output("lazygaspi_hs", info->id, &(info->out)));
 
     ASSERT(info->n != 0, "main");
 

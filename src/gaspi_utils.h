@@ -61,7 +61,7 @@ inline double get_time(){
  *  Returns:
  *  GASPI_SUCCESS on success, GASPI_ERROR (or other error codes) on error, or GASPI_TIMEOUT on timeout.
  */
-static gaspi_return_t setup_gaspi_output(const char* identifier, gaspi_rank_t id, std::ofstream** stream, 
+static gaspi_return_t gaspi_setup_output(const char* identifier, gaspi_rank_t id, std::ofstream** stream, 
                                          gaspi_group_t group = GASPI_GROUP_ALL){
     std::stringstream s; 
     s << "rm -f " << identifier << "*.out"; 

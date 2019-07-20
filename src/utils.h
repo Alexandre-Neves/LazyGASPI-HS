@@ -51,7 +51,7 @@ struct IntraComm {
 };
 
 static inline lazygaspi_age_t get_min_age(lazygaspi_age_t current, lazygaspi_age_t slack){
-    return current < slack + 2 ? 1 : current - slack - 1;
+    return (current < slack + 2) ? 1 : (current - slack - 1);
 }
 
 static inline gaspi_rank_t get_rank_of_table(lazygaspi_id_t table_id, gaspi_rank_t n){

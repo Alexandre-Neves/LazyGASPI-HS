@@ -27,7 +27,7 @@
 #define SUCCESS_OR_DIE(f...)            \
     do {                                \
         const gaspi_return_t r = f;     \
-        if (r == GASPI_ERROR)           \
+        if (r != GASPI_SUCCESS)         \
             DIE_ON_ERROR(#f, r);        \
     } while(0); 
 
@@ -93,8 +93,7 @@ static gaspi_return_t gaspi_free(gaspi_queue_id_t q, int* free) {
     if(r != GASPI_SUCCESS) return r;
     r = gaspi_queue_size(q, &queue_size);
     if(r != GASPI_SUCCESS) return r;
-
-    if(queue_size <= queue_max) return GASPI_ERR_MANY_Q_REQS;
+    if(queue_size > queue_max) return GASPI_QUEUE_FULL;
     *free = queue_max - queue_size;
     return GASPI_SUCCESS;
 }
@@ -103,7 +102,7 @@ static gaspi_return_t gaspi_free(gaspi_queue_id_t q, int* free) {
  *  Parameters:
  *  q    - The queue to wait for.
  *  min  - The minimum amount of requests that can be posted to the queue after returning.
- *  free - Output parameter for the amount of requests that can actually be posted. Use nullptr to ignore
+ *  free - Output parameter for the amount of requests that can actually be posted. Use nullptr to ignore.
  *  
  *  Returns:
  *  GASPI_SUCCESS on success, GASPI_ERROR (or other error codes) on error, or GASPI_TIMEOUT on timeout.
@@ -111,10 +110,8 @@ static gaspi_return_t gaspi_free(gaspi_queue_id_t q, int* free) {
 static gaspi_return_t gaspi_wait_for_queue(gaspi_queue_id_t q, int min, int* free = nullptr) {
     int f;
     auto r = gaspi_free(q, &f);
-    for (; f < min && r == GASPI_SUCCESS; r = gaspi_free(q, &f)) {
+    for (; f < min && r == GASPI_SUCCESS; r = gaspi_free(q, &f)) 
         r = gaspi_wait(q, GASPI_BLOCK);
-        if(r != GASPI_SUCCESS) break;
-    }
     if(free) *free = f;
     return r;
 }

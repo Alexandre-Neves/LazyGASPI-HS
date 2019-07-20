@@ -1,5 +1,5 @@
 /*
-Copyright (c) Fraunhofer ITWM - Carsten Lojewski <lojewski@itwm.fhg.de>, 2013-2016
+Copyright (c) Fraunhofer ITWM - Carsten Lojewski <lojewski@itwm.fhg.de>, 2013-2019
 
 This file is part of GPI-2.
 
@@ -51,8 +51,7 @@ extern "C"
   typedef unsigned char gaspi_group_t;
   typedef unsigned int gaspi_number_t;
   typedef void *gaspi_pointer_t;
-  typedef void *gaspi_state_t;
-  typedef unsigned char *gaspi_state_vector_t;
+  typedef void* gaspi_reduce_state_t;
   typedef unsigned char gaspi_queue_id_t;
   typedef unsigned long gaspi_size_t;
   typedef unsigned long gaspi_alloc_t;
@@ -103,11 +102,12 @@ extern "C"
       GASPI_ERR_INV_SIZE = 20,
       GASPI_ERR_MANY_SEG = 21,
       GASPI_ERR_MANY_GRP = 22,
-      GASPI_ERR_MANY_Q_REQS = 23,
+      GASPI_QUEUE_FULL = 23,
       GASPI_ERR_UNALIGN_OFF = 24,
       GASPI_ERR_ACTIVE_COLL = 25,
       GASPI_ERR_DEVICE = 26,
-      GASPI_ERR_MEMALLOC = 27
+      GASPI_ERR_SN = 27,
+      GASPI_ERR_MEMALLOC = 28
     } gaspi_return_t;
 
   /**
@@ -118,10 +118,42 @@ extern "C"
     {
       GASPI_IB = 0,	  /* Infiniband */
       GASPI_ROCE = 1,	  /* RoCE */
-      GASPI_ETHERNET = 2,   /* Ethernet (TCP) */
+      GASPI_ETHERNET = 2, /* Ethernet (TCP) */
       GASPI_GEMINI = 3,	  /* Cray Gemini (not implemented) */
       GASPI_ARIES = 4	  /* Cray Aries (not implemented) */
     } gaspi_network_t;
+
+  /**
+   * Network Device configuration.
+   *
+   */
+  typedef struct
+    {
+      gaspi_network_t network_type;
+      struct
+      {
+	struct
+	{
+	  gaspi_int netdev_id;   /* the network device to use */
+	  gaspi_uint mtu;        /* the MTU value to use */
+	  gaspi_uint port_check; /* flag to whether to perform a network check */
+	} ib;
+
+	struct
+	{
+	  /* The first port to use (default 19000).  */
+	  /*NOTE: if more than one instance per node is used, the
+	    consecutive ports will be used:
+	    - inst 0: port
+	    - inst 1: port + 1
+	    - inst 2: port + 2
+	    - ....
+	  */
+	  gaspi_uint port;
+	} tcp;
+
+      } params;
+  } gaspi_dev_config_t;
 
   /**
    * Operations for Collective communication.
@@ -156,7 +188,9 @@ extern "C"
     {
       GASPI_STATE_HEALTHY = 0,
       GASPI_STATE_CORRUPT = 1
-    } gaspi_qp_state_t;
+    } gaspi_state_t;
+
+  typedef gaspi_state_t* gaspi_state_vector_t;
 
   /**
    * Memory allocation policy.
@@ -165,8 +199,7 @@ extern "C"
   enum gaspi_alloc_policy_flags
     {
       GASPI_MEM_UNINITIALIZED = 0, /* Memory will not be initialized */
-      GASPI_MEM_INITIALIZED = 1,	 /* Memory will be initialized (zero-ed) */
-      GASPI_MEM_GPU = 2
+      GASPI_MEM_INITIALIZED = 1, /* Memory will be initialized (zero-ed) */
     };
 
 #define GASPI_ALLOC_DEFAULT GASPI_MEM_UNINITIALIZED
@@ -177,7 +210,7 @@ extern "C"
    */
   typedef enum
     {
-      GASPI_TOPOLOGY_NONE = 0,    /* No connection will be established (application) */
+      GASPI_TOPOLOGY_NONE = 0,    /* No connection will be established. GASPI_GROUP_ALL is not set.  */
       GASPI_TOPOLOGY_STATIC = 1,  /* Statically connect everyone (all-to-all) */
       GASPI_TOPOLOGY_DYNAMIC = 2  /* Dynamically connect peers (as needed) */
     } gaspi_topology_t;
@@ -188,26 +221,29 @@ extern "C"
    */
   typedef struct gaspi_config
   {
-    gaspi_uint logger;	     /* flag to set logging */
-    gaspi_uint sn_port;      /* port for internal comm */
-    gaspi_uint net_info;     /* flag to set network information display*/
-    gaspi_int netdev_id;     /* the network device to use */
-    gaspi_uint mtu;	     /* the MTU value to use */
-    gaspi_uint port_check;   /* flag to whether to perform a network check */
-    gaspi_uint user_net;     /* */
-    gaspi_network_t network; /* network type */
-    gaspi_uint queue_depth;  /* the queue depth (size) to use */
-    gaspi_uint queue_num;    /* the number of queues to use */
-    gaspi_number_t group_max;
-    gaspi_number_t segment_max;
-    gaspi_size_t transfer_size_max;
-    gaspi_number_t notification_num;
-    gaspi_number_t passive_queue_size_max;
-    gaspi_number_t passive_transfer_size_max;
-    gaspi_size_t allreduce_buf_size;
-    gaspi_number_t allreduce_elem_max;
-    gaspi_topology_t build_infrastructure;
+    /* GPI-2 only */
+    gaspi_uint logger;	                      /* flag to set logging */
+    gaspi_uint sn_port;                       /* port for internal comm */
+    gaspi_uint net_info;                      /* flag to set network information display*/
+    gaspi_uint user_net;                      /* flag if user has set the network */
+    gaspi_int sn_persistent;                  /* flag whether sn connection is persistent */
+    gaspi_timeout_t sn_timeout;               /* timeout value for internal sn operations */
+    gaspi_dev_config_t dev_config;            /* Specific, device-dependent params */
 
+    /* GASPI specified */
+    gaspi_network_t network;                  /* network type to be used */
+    gaspi_uint queue_size_max;                /* the queue depth (size) to use */
+    gaspi_uint queue_num;                     /* the number of queues to use */
+    gaspi_number_t group_max;                 /* max number of groups that can be created */
+    gaspi_number_t segment_max;               /* max number of segments that can be created */
+    gaspi_size_t transfer_size_max;           /* maximum size (bytes) of a single data transfer */
+    gaspi_number_t notification_num;          /* maximum number of allowed notifications */
+    gaspi_number_t passive_queue_size_max;    /* maximum number of allowed on-going passive requests */
+    gaspi_number_t passive_transfer_size_max; /* maximum size (bytes) of a single passive transfer */
+    gaspi_size_t allreduce_buf_size;          /* size of internal buffer for gaspi_allreduce_user */
+    gaspi_number_t allreduce_elem_max;        /* maximum number of elements in gaspi_allreduce */
+    gaspi_topology_t build_infrastructure;    /* whether and how the topology should be built at initialization */
+    void* user_defined;                       /* user-defined information */
   } gaspi_config_t;
 
   /**
@@ -226,7 +262,7 @@ extern "C"
   typedef gaspi_return_t (*gaspi_reduce_operation_t) (gaspi_pointer_t const operand_one,
 						      gaspi_pointer_t const operand_two,
 						      gaspi_pointer_t const result,
-						      gaspi_state_t const state,
+						      gaspi_reduce_state_t const state,
 						      const gaspi_number_t num,
 						      const gaspi_size_t element_size,
 						      const gaspi_timeout_t timeout_ms);
@@ -564,8 +600,9 @@ extern "C"
    * @param queue The queue where to post the write request.
    * @param timeout_ms Timeout in milliseconds (or GASPI_BLOCK/GASPI_TEST).
    *
-   * @return GASPI_SUCCESS in case of success, GASPI_ERROR in case of
-   * error, GASPI_TIMEOUT in case of timeout.
+   * @return GASPI_SUCCESS in case of success, GASPI_QUEUE_FULL if the
+   * requested could not be posted because the provided queue is full,
+   * GASPI_ERROR in case of error, GASPI_TIMEOUT in case of timeout.
    */
   gaspi_return_t gaspi_write (const gaspi_segment_id_t segment_id_local,
 			      const gaspi_offset_t offset_local,
@@ -586,10 +623,10 @@ extern "C"
    * @param size The size of data to read.
    * @param queue The queue where to post the read request.
    * @param timeout_ms Timeout in milliseconds (or GASPI_BLOCK/GASPI_TEST).
-
    *
-   * @return GASPI_SUCCESS in case of success, GASPI_ERROR in case of
-   * error, GASPI_TIMEOUT in case of timeout.
+   * @return GASPI_SUCCESS in case of success, GASPI_QUEUE_FULL if the
+   * requested could not be posted because the provided queue is full,
+   * GASPI_ERROR in case of error, GASPI_TIMEOUT in case of timeout.
    */
   gaspi_return_t gaspi_read (const gaspi_segment_id_t segment_id_local,
 			     const gaspi_offset_t offset_local,
@@ -603,7 +640,7 @@ extern "C"
   /** List of writes.
    *
    *
-   * @param num The number of list elements.
+   * @param num The number of list elements (see also gaspi_rw_list_elem_max)
    * @param segment_id_local List of local segments with data to be written.
    * @param offset_local List of local offsets with data to be written.
    * @param rank Rank to which will be written.
@@ -613,8 +650,9 @@ extern "C"
    * @param queue The queue where to post the list.
    * @param timeout_ms Timeout in milliseconds (or GASPI_BLOCK/GASPI_TEST).
    *
-   * @return GASPI_SUCCESS in case of success, GASPI_ERROR in case of
-   * error, GASPI_TIMEOUT in case of timeout.
+   * @return GASPI_SUCCESS in case of success, GASPI_QUEUE_FULL if the
+   * requested could not be posted because the provided queue is full,
+   * GASPI_ERROR in case of error, GASPI_TIMEOUT in case of timeout.
    */
   gaspi_return_t gaspi_write_list (const gaspi_number_t num,
 				   gaspi_segment_id_t * const segment_id_local,
@@ -639,8 +677,9 @@ extern "C"
    * @param queue The queue where to post the list.
    * @param timeout_ms Timeout in milliseconds (or GASPI_BLOCK/GASPI_TEST).
    *
-   * @return GASPI_SUCCESS in case of success, GASPI_ERROR in case of
-   * error, GASPI_TIMEOUT in case of timeout.
+   * @return GASPI_SUCCESS in case of success, GASPI_QUEUE_FULL if the
+   * requested could not be posted because the provided queue is full,
+   * GASPI_ERROR in case of error, GASPI_TIMEOUT in case of timeout.
    */
 
   gaspi_return_t gaspi_read_list (const gaspi_number_t num,
@@ -683,7 +722,7 @@ extern "C"
    *
    * @param buffer_send The buffer with data for the operation.
    * @param buffer_receive The buffer to receive the result of the operation.
-   * @param num The number of data elements in the buffer.
+   * @param num The number of data elements in the buffer (beware of maximum - use gaspi_allreduce_elem_max).
    * @param operation The type of operations (see gaspi_operation_t).
    * @param datatyp Type of data (see gaspi_datatype_t).
    * @param group The group involved in the operation.
@@ -696,7 +735,7 @@ extern "C"
 				  gaspi_pointer_t const buffer_receive,
 				  const gaspi_number_t num,
 				  const gaspi_operation_t operation,
-				  const gaspi_datatype_t datatyp,
+				  const gaspi_datatype_t datatype,
 				  const gaspi_group_t group,
 				  const gaspi_timeout_t timeout_ms);
 
@@ -705,7 +744,7 @@ extern "C"
 				       const gaspi_number_t num,
 				       const gaspi_size_t element_size,
 				       gaspi_reduce_operation_t const reduce_operation,
-				       gaspi_state_t const reduce_state,
+				       gaspi_reduce_state_t const reduce_state,
 				       const gaspi_group_t group,
 				       const gaspi_timeout_t timeout_ms);
 
@@ -860,8 +899,9 @@ extern "C"
    * @param queue The queue where to post the request.
    * @param timeout_ms Timeout in milliseconds (or GASPI_BLOCK/GASPI_TEST).
    *
-   * @return GASPI_SUCCESS in case of success, GASPI_ERROR in case of
-   * error, GASPI_TIMEOUT in case of timeout.
+   * @return GASPI_SUCCESS in case of success, GASPI_QUEUE_FULL if the
+   * requested could not be posted because the provided queue is full,
+   * GASPI_ERROR in case of error, GASPI_TIMEOUT in case of timeout.
    */
   gaspi_return_t gaspi_write_notify (const gaspi_segment_id_t segment_id_local,
 				     const gaspi_offset_t offset_local,
@@ -890,8 +930,9 @@ extern "C"
    * @param queue The queue where to post the request.
    * @param timeout_ms Timeout in milliseconds (or GASPI_BLOCK/GASPI_TEST).
    *
-   * @return GASPI_SUCCESS in case of success, GASPI_ERROR in case of
-   * error, GASPI_TIMEOUT in case of timeout.
+   * @return GASPI_SUCCESS in case of success, GASPI_QUEUE_FULL if the
+   * requested could not be posted because the provided queue is full,
+   * GASPI_ERROR in case of error, GASPI_TIMEOUT in case of timeout.
    */
   gaspi_return_t gaspi_write_list_notify (const gaspi_number_t num,
 					  gaspi_segment_id_t * const segment_id_local,
@@ -905,6 +946,64 @@ extern "C"
 					  const gaspi_notification_t notification_value,
 					  const gaspi_queue_id_t queue,
 					  const gaspi_timeout_t timeout_ms);
+
+  /** Read data from a given rank with a notification on the local side.
+   *
+   *
+   * @param segment_id_local The segment identifier where data to be written is located.
+   * @param offset_local The offset where the data to be written is located.
+   * @param rank The rank where to write and notify.
+   * @param segment_id_remote The remote segment identifier where to write the data to.
+   * @param offset_remote The remote offset where to write to.
+   * @param size The size of the data to write.
+   * @param notification_id The notification identifier to use.
+   * @param queue The queue where to post the request.
+   * @param timeout_ms Timeout in milliseconds (or GASPI_BLOCK/GASPI_TEST).
+   *
+   * @return GASPI_SUCCESS in case of success, GASPI_QUEUE_FULL if the
+   * requested could not be posted because the provided queue is full,
+   * GASPI_ERROR in case of error, GASPI_TIMEOUT in case of timeout.
+   */
+  gaspi_return_t gaspi_read_notify (const gaspi_segment_id_t segment_id_local,
+				    const gaspi_offset_t offset_local,
+				    const gaspi_rank_t rank,
+				    const gaspi_segment_id_t segment_id_remote,
+				    const gaspi_offset_t offset_remote,
+				    const gaspi_size_t size,
+				    const gaspi_notification_id_t notification_id,
+				    const gaspi_queue_id_t queue,
+				    const gaspi_timeout_t timeout_ms);
+
+  /** Read from different locations on a given rank and notify on local side.
+   *
+   *
+   * @param num The number of elements in the list.
+   * @param segment_id_local The list of local segments where data is located.
+   * @param offset_local The list of local offsets where data to write is located.
+   * @param rank The rank where to write the list and notification.
+   * @param segment_id_remote The list of remote segments where to write.
+   * @param offset_remote The list of remote offsets where to write.
+   * @param size The list of sizes to write.
+   * @param segment_id_notification The segment id used for notification.
+   * @param notification_id The notification identifier to use.
+   * @param queue The queue where to post the request.
+   * @param timeout_ms Timeout in milliseconds (or GASPI_BLOCK/GASPI_TEST).
+   *
+   * @return GASPI_SUCCESS in case of success, GASPI_QUEUE_FULL if the
+   * requested could not be posted because the provided queue is full,
+   * GASPI_ERROR in case of error, GASPI_TIMEOUT in case of timeout.
+   */
+  gaspi_return_t gaspi_read_list_notify (const gaspi_number_t num,
+					 gaspi_segment_id_t * const segment_id_local,
+					 gaspi_offset_t * const offset_local,
+					 const gaspi_rank_t rank,
+					 gaspi_segment_id_t * const segment_id_remote,
+					 gaspi_offset_t * const offset_remote,
+					 gaspi_size_t * const size,
+					 const gaspi_segment_id_t segment_id_notification,
+					 const gaspi_notification_id_t notification_id,
+					 const gaspi_queue_id_t queue,
+					 const gaspi_timeout_t timeout_ms);
 
   //@}
 
@@ -986,8 +1085,7 @@ extern "C"
    *
    * @return GASPI_SUCCESS in case of success, GASPI_ERROR in case of error.
    */
-  gaspi_return_t gaspi_transfer_size_min (gaspi_size_t *
-					  const transfer_size_min);
+  gaspi_return_t gaspi_transfer_size_min (gaspi_size_t * const transfer_size_min);
 
   /** Get the maximum size (in bytes) that can be communicated in a
    * single request (read, write, etc.).
@@ -997,18 +1095,28 @@ extern "C"
    *
    * @return GASPI_SUCCESS in case of success, GASPI_ERROR in case of error.
    */
-  gaspi_return_t gaspi_transfer_size_max (gaspi_size_t *
-					  const transfer_size_max);
+  gaspi_return_t gaspi_transfer_size_max (gaspi_size_t * const transfer_size_max);
 
-  /** Get the number of available notifications.
+  /** Get the number of available notification ids. Important to note
+   * is that the allowed ids are in [ 0, notification_num ) .
    *
    *
    * @param notification_num Output parameter with the number of
-   * available notifications.
+   * available notifications ids.
    *
    * @return GASPI_SUCCESS in case of success, GASPI_ERROR in case of error.
    */
   gaspi_return_t gaspi_notification_num (gaspi_number_t * const notification_num);
+
+  /** Get the minimum allowed size (in bytes) allowed in passive communication.
+   *
+   *
+   * @param passive_transfer_size_min Output parameter with the
+   * minimum allowed size (in bytes) for passive communication.
+   *
+   * @return GASPI_SUCCESS in case of success, GASPI_ERROR in case of error.
+   */
+  gaspi_return_t gaspi_passive_transfer_size_min (gaspi_size_t * const passive_transfer_size_min);
 
   /** Get the maximum allowed size (in bytes) allowed in passive communication.
    *
@@ -1019,6 +1127,16 @@ extern "C"
    * @return GASPI_SUCCESS in case of success, GASPI_ERROR in case of error.
    */
   gaspi_return_t gaspi_passive_transfer_size_max (gaspi_size_t * const passive_transfer_size_max);
+
+  /** Maximum value an gaspi_atomic_value_t can hold.
+   *
+   *
+   * @param max_value Output parameter with the maximum value allowed
+   * for atomic operations.
+   *
+   * @return GASPI_SUCCESS in case of success, GASPI_ERROR in case of error.
+   */
+  gaspi_return_t gaspi_atomic_max(gaspi_atomic_value_t *max_value);
 
   /** Get the internal buffer size for gaspi_allreduce_user.
    *
@@ -1038,16 +1156,6 @@ extern "C"
    */
   gaspi_return_t gaspi_allreduce_elem_max (gaspi_number_t * const elem_max);
 
-  /** Get the maximum number of elements allowed in list (read, write)
-   * operations.
-   *
-   *
-   * @param elem_max Output parameter with the maximum number of elements.
-   *
-   * @return GASPI_SUCCESS in case of success, GASPI_ERROR in case of error.
-   */
-  gaspi_return_t gaspi_rw_list_elem_max (gaspi_number_t * const elem_max);
-
   /** Get the maximum number of queues that may be used.
    * It is the maximum of initialized queues plus dynamically created queues.
    *
@@ -1065,6 +1173,15 @@ extern "C"
    * @return GASPI_SUCCESS in case of success, GASPI_ERROR in case of error.
    */
   gaspi_return_t gaspi_network_type (gaspi_network_t * const network_type);
+
+  /** Get current value of config build_infrastructure.
+   *
+   *
+   * @param build Output parameter with the value.
+   *
+   * @return GASPI_SUCCESS in case of success, GASPI_ERROR in case of error.
+   */
+  gaspi_return_t gaspi_build_infrastructure (gaspi_number_t * const build);
 
   /** Get the number of cycles (ticks).
    *
@@ -1143,10 +1260,10 @@ extern "C"
    */
   gaspi_return_t
   gaspi_statistic_counter_info( gaspi_statistic_counter_t counter,
-			        gaspi_statistic_argument_t* counter_argument,
-			        gaspi_string_t* counter_name,
+				gaspi_statistic_argument_t* counter_argument,
+				gaspi_string_t* counter_name,
 				gaspi_string_t* counter_description,
-			        gaspi_number_t* verbosity_level);
+				gaspi_number_t* verbosity_level);
 
   /** Get statistical counter.
    *

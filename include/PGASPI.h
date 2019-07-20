@@ -1,5 +1,5 @@
 /*
-Copyright (c) Fraunhofer ITWM - Carsten Lojewski <lojewski@itwm.fhg.de>, 2013-2016
+Copyright (c) Fraunhofer ITWM - Carsten Lojewski <lojewski@itwm.fhg.de>, 2013-2019
 
 This file is part of GPI-2.
 
@@ -27,15 +27,15 @@ extern "C"
 #include "GASPI.h"
 
   gaspi_return_t pgaspi_config_get (gaspi_config_t * const config);
-  
+
   gaspi_return_t pgaspi_config_set (const gaspi_config_t new_config);
-  
+
   gaspi_return_t pgaspi_version (float *version);
 
   gaspi_return_t pgaspi_proc_init (const gaspi_timeout_t timeout_ms);
 
   gaspi_return_t pgaspi_initialized (gaspi_number_t * initialized);
-  
+
   gaspi_return_t pgaspi_proc_term (const gaspi_timeout_t timeout_ms);
 
   gaspi_return_t pgaspi_proc_local_rank (gaspi_rank_t * const local_rank);
@@ -180,7 +180,7 @@ extern "C"
 					const gaspi_size_t element_size,
 					gaspi_reduce_operation_t const
 					reduce_operation,
-					gaspi_state_t const reduce_state,
+					gaspi_reduce_state_t const reduce_state,
 					const gaspi_group_t group,
 					const gaspi_timeout_t timeout_ms);
 
@@ -272,6 +272,28 @@ extern "C"
 					   const gaspi_queue_id_t queue,
 					   const gaspi_timeout_t timeout_ms);
 
+  gaspi_return_t pgaspi_read_notify (const gaspi_segment_id_t segment_id_local,
+				     const gaspi_offset_t offset_local,
+				     const gaspi_rank_t rank,
+				     const gaspi_segment_id_t segment_id_remote,
+				     const gaspi_offset_t offset_remote,
+				     const gaspi_size_t size,
+				     const gaspi_notification_id_t notification_id,
+				     const gaspi_queue_id_t queue,
+				     const gaspi_timeout_t timeout_ms);
+
+  gaspi_return_t pgaspi_read_list_notify (const gaspi_number_t num,
+					  gaspi_segment_id_t * const segment_id_local,
+					  gaspi_offset_t * const offset_local,
+					  const gaspi_rank_t rank,
+					  gaspi_segment_id_t * const segment_id_remote,
+					  gaspi_offset_t * const offset_remote,
+					  gaspi_size_t * const size,
+					  const gaspi_segment_id_t segment_id_notification,
+					  const gaspi_notification_id_t notification_id,
+					  const gaspi_queue_id_t queue,
+					  const gaspi_timeout_t timeout_ms);
+
   gaspi_return_t pgaspi_queue_size (const gaspi_queue_id_t queue,
 				    gaspi_number_t * const queue_size);
 
@@ -307,7 +329,7 @@ extern "C"
   gaspi_return_t pgaspi_time_ticks (gaspi_cycles_t * const ticks);
 
   gaspi_return_t pgaspi_time_get (gaspi_time_t * const wtime);
-  
+
   gaspi_return_t pgaspi_cpu_frequency (gaspi_float * const cpu_mhz);
 
   gaspi_return_t pgaspi_machine_type (char const machine_type[16]);
@@ -325,9 +347,9 @@ extern "C"
 
 
   gaspi_return_t pgaspi_statistic_verbosity_level(gaspi_number_t _verbosity_level);
-  
+
   gaspi_return_t pgaspi_statistic_counter_max(gaspi_statistic_counter_t* counter_max);
-  
+
 
   gaspi_return_t
   pgaspi_statistic_counter_info(gaspi_statistic_counter_t counter
@@ -336,7 +358,7 @@ extern "C"
 				, gaspi_string_t* counter_description
 				, gaspi_number_t* verbosity_level
 				);
-  
+
   gaspi_return_t
   pgaspi_statistic_counter_get ( gaspi_statistic_counter_t counter
 				 , gaspi_number_t argument
@@ -346,7 +368,7 @@ extern "C"
   gaspi_return_t pgaspi_statistic_counter_reset (gaspi_statistic_counter_t counter);
 
   gaspi_string_t pgaspi_error_str(gaspi_return_t error_code);
-  
+
 #ifdef __cplusplus
 }
 #endif

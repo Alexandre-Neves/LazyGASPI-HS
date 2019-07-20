@@ -1,5 +1,5 @@
 /*
-Copyright (c) Fraunhofer ITWM - Carsten Lojewski <lojewski@itwm.fhg.de>, 2013-2016
+Copyright (c) Fraunhofer ITWM - Carsten Lojewski <lojewski@itwm.fhg.de>, 2013-2019
 
 This file is part of GPI-2.
 
@@ -89,7 +89,8 @@ extern "C"
    */
   void gaspi_printf (const char *fmt, ...);
 
-  /** GASPI printf to print to a particular gaspi_logger.
+  /** GASPI printf to print to a particular gaspi_logger ie. a
+   * gaspi_logger running on the node of a particular rank.
    *
    * @param rank the rank of the logger node.
    * @param fmt printf parameters.
@@ -118,7 +119,8 @@ extern "C"
    */
   gaspi_return_t gaspi_set_socket_affinity (const gaspi_uchar socket);
 
-  /** Get string describing return value.
+  /** Get string describing return value. This is slightly more
+   * practical than gaspi_print_error.
    *
    *
    * @param error_code The return value to be described.
@@ -163,6 +165,17 @@ extern "C"
   gaspi_return_t gaspi_segment_size (const gaspi_segment_id_t segment_id,
 				     const gaspi_rank_t rank,
 				     gaspi_size_t * const size);
+
+  /** Get the maximum number of elements allowed in list (read, write)
+   * operations.
+   *
+   *
+   * @param elem_max Output parameter with the maximum number of elements.
+   *
+   * @return GASPI_SUCCESS in case of success, GASPI_ERROR in case of error.
+   */
+  gaspi_return_t gaspi_rw_list_elem_max (gaspi_number_t * const elem_max);
+
 
 #ifdef __cplusplus
 }

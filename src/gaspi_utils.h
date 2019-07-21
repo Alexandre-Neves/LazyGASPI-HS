@@ -16,23 +16,27 @@
 
 #include "lazygaspi.h"
 
-#define OUTPUT &std::cout
 
-#define DIE_ON_ERROR(function, msg)                                                                                 \
-    do {                                                                                                            \
-        *OUTPUT << "\n\nERROR: " << function << "[" << __FILE__ << ":" << __LINE__ << "]: " << msg << std::flush;   \
-        abort();                                                                                                    \
+#define DIE_ON_ERROR_OUT(function, msg, out)                                                                    \
+    do {                                                                                                        \
+        out << "ERROR: " << function << "[" << __FILE__ << ":" << __LINE__ << "]: " << msg << std::flush;       \
+        abort();                                                                                                \
     } while(0);
 
-#define SUCCESS_OR_DIE(f...)            \
-    do {                                \
-        const gaspi_return_t r = f;     \
-        if (r != GASPI_SUCCESS)         \
-            DIE_ON_ERROR(#f, r);        \
+#define DIE_ON_ERROR(function, msg) DIE_ON_ERROR_OUT(function, msg, *info->out)
+
+#define SUCCESS_OR_DIE_OUT(out, f...)       \
+    do {                                    \
+        const gaspi_return_t r = f;         \
+        if (r != GASPI_SUCCESS)             \
+            DIE_ON_ERROR_OUT(#f, r, out);   \
     } while(0); 
 
+#define SUCCESS_OR_DIE(f...) SUCCESS_OR_DIE_OUT(*info->out, f)
 
-#define ASSERT(expr, function) { if(!(expr)) DIE_ON_ERROR(function, "Failed to assert that " << #expr) }
+#define ASSERT_OUT(out, expr, function) { if(!(expr)) DIE_ON_ERROR_OUT(function, "Failed to assert that " << #expr, out) }
+
+#define ASSERT(expr, function) ASSERT_OUT(*info->out, expr, function)
 
 #define GASPI_BARRIER gaspi_barrier(GASPI_GROUP_ALL, GASPI_BLOCK)
 
@@ -93,6 +97,7 @@ static gaspi_return_t gaspi_free(gaspi_queue_id_t q, int* free) {
     if(r != GASPI_SUCCESS) return r;
     r = gaspi_queue_size(q, &queue_size);
     if(r != GASPI_SUCCESS) return r;
+
     if(queue_size > queue_max) return GASPI_QUEUE_FULL;
     *free = queue_max - queue_size;
     return GASPI_SUCCESS;
@@ -102,7 +107,7 @@ static gaspi_return_t gaspi_free(gaspi_queue_id_t q, int* free) {
  *  Parameters:
  *  q    - The queue to wait for.
  *  min  - The minimum amount of requests that can be posted to the queue after returning.
- *  free - Output parameter for the amount of requests that can actually be posted. Use nullptr to ignore.
+ *  free - Output parameter for the amount of requests that can actually be posted. Use nullptr to ignore
  *  
  *  Returns:
  *  GASPI_SUCCESS on success, GASPI_ERROR (or other error codes) on error, or GASPI_TIMEOUT on timeout.
@@ -110,8 +115,10 @@ static gaspi_return_t gaspi_free(gaspi_queue_id_t q, int* free) {
 static gaspi_return_t gaspi_wait_for_queue(gaspi_queue_id_t q, int min, int* free = nullptr) {
     int f;
     auto r = gaspi_free(q, &f);
-    for (; f < min && r == GASPI_SUCCESS; r = gaspi_free(q, &f)) 
+    for (; f < min && r == GASPI_SUCCESS; r = gaspi_free(q, &f)) {
         r = gaspi_wait(q, GASPI_BLOCK);
+        if(r != GASPI_SUCCESS) break;
+    }
     if(free) *free = f;
     return r;
 }
@@ -193,18 +200,22 @@ typedef gaspi_size_t (*SizeReductor)(gaspi_size_t size, void* data);
 /**Allocates as much memory as possible for a segment. Uses last available segment ID for testing.
  * 
  * Parameters:
- * seg    - The ID of the new segment.
- * size   - The desired/maximum size of the new segment.
- * red    - A SizeReductor function, used to reduce the size that will be allocated, in case the previous size failed.
- * margin - The minimum amount of memory guaranteed to be left unallocated after segment is allocated.
- * data   - Data passed to the SizeReductor function.
- * policy - The memory allocation policy.
+ * seg       - The ID of the new segment.
+ * size      - The desired/maximum size of the new segment.
+ * red       - A SizeReductor function, used to reduce the size that will be allocated, in case the previous size failed.
+ * margin    - The minimum amount of memory guaranteed to be left unallocated after segment is allocated.
+ * allocated - Output parameter for the amount of bytes actually allocated (the actual size of the segment).
+ * ptr       - Output parameter for the pointer to the newly created segment. Use nullptr to ignore.
+ * data      - Data passed to the SizeReductor function.
+ * policy    - The memory allocation policy.
  * 
  * Returns:
- * A pointer to the newly allocated segment.
+ * GASPI_SUCCESS on success, GASPI_ERROR (or other error codes) on error, or GASPI_TIMEOUT on timeout.
+ * GASPI_ERR_MEMALLOC is returned if size was reduced to 0 by `red`.
  */
-static gaspi_return_t gaspi_malloc_amap(gaspi_segment_id_t seg, gaspi_size_t size, SizeReductor red, gaspi_size_t margin, gaspi_size_t* allocated, 
-                                        gaspi_pointer_t* ptr, void* data = nullptr, gaspi_alloc_policy_flags policy = GASPI_MEM_UNINITIALIZED){
+static gaspi_return_t gaspi_malloc_amap(gaspi_segment_id_t seg, gaspi_size_t size, SizeReductor red, gaspi_size_t margin, 
+                                        gaspi_size_t* allocated, gaspi_pointer_t* ptr = nullptr, void* data = nullptr, 
+                                        gaspi_alloc_policy_flags policy = GASPI_MEM_UNINITIALIZED){
     auto r = gaspi_segment_create_noblock(seg, size, policy);
     while(r == GASPI_ERR_MEMALLOC || r == GASPI_ERROR) {
         size = red(size, data);
@@ -221,8 +232,9 @@ static gaspi_return_t gaspi_malloc_amap(gaspi_segment_id_t seg, gaspi_size_t siz
             if(r != GASPI_SUCCESS) return r;
         }
     }
+    if(r != GASPI_SUCCESS) return r;
     *allocated = size;
-    return gaspi_segment_ptr(seg, ptr);
+    return ptr ? gaspi_segment_ptr(seg, ptr) : GASPI_SUCCESS;
 }
 
 struct Notification{
@@ -296,7 +308,7 @@ static gaspi_return_t read(gaspi_segment_id_t from, gaspi_segment_id_t to, gaspi
                            gaspi_size_t size, gaspi_rank_t rank, gaspi_timeout_t timeout = GASPI_BLOCK, gaspi_queue_id_t q = 0){
     int free;
     auto r = gaspi_wait_for_queue(1, q, &free); if(r != GASPI_SUCCESS) return r;
-
+    
     r = gaspi_read(to, offset_to, rank, from, offset_from, size, q, timeout); if(r != GASPI_SUCCESS) return r;
 
     return gaspi_wait(q, GASPI_BLOCK);
@@ -398,9 +410,9 @@ static gaspi_pointer_t get_pointer(gaspi_segment_id_t id, const char* notFoundMe
     auto r = gaspi_segment_ptr(id, &ptr);
     if(r != GASPI_SUCCESS){
         if(r == GASPI_ERR_INV_SEG){
-            if(notFoundMessage) {   DIE_ON_ERROR("gaspi_get_pointer", notFoundMessage); }
-            else                    DIE_ON_ERROR("gaspi_get_pointer", "Segment ID " << id << " was not found.");
-        } else                      DIE_ON_ERROR("gaspi_get_pointer", r);
+            if(notFoundMessage) {   DIE_ON_ERROR_OUT("gaspi_get_pointer", notFoundMessage, std::cout); }
+            else                    DIE_ON_ERROR_OUT("gaspi_get_pointer", "Segment ID " << id << " was not found.", std::cout);
+        } else                      DIE_ON_ERROR_OUT("gaspi_get_pointer", r, std::cout);
     }
     return ptr;
 };

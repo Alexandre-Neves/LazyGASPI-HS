@@ -1,4 +1,4 @@
-#include "lazygaspi.h"
+#include "lazygaspi_hs.h"
 #include "utils.h"
 #include "gaspi_utils.h"
 #include <cstring>

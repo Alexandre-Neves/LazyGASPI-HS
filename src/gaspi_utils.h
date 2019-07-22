@@ -14,7 +14,7 @@
 #include <fstream>
 #include <cassert>
 
-#include "lazygaspi.h"
+#include "lazygaspi_hs.h"
 
 
 #define DIE_ON_ERROR_OUT(function, msg, out)                                                                    \

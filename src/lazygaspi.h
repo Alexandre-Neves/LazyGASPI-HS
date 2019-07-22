@@ -1,3 +1,7 @@
+/** LazyGASPI-HS
+ *  LazyGASPI library with a homogeneous and sharded implementation.
+ */
+
 #ifndef __H_LAZYGASPI
 #define __H_LAZYGASPI
 
@@ -43,18 +47,30 @@ struct LazyGaspiRowData{
     LazyGaspiRowData() : LazyGaspiRowData(0, 0, 0) {}
 };
 
+/** A function used to determine a given size that depends on the current rank and/or total amount of ranks.
+ *  Parameters:
+ *  rank - The current rank, as given by gaspi_proc_rank.
+ *  total - The total number of ranks, as given by gaspi_proc_num.
+ */
+typedef gaspi_size_t (*SizeDeterminer)(gaspi_rank_t rank, gaspi_rank_t total);
+
 /** Initializes LazyGASPI.
  * 
  *  Parameters:
- *  table_amount - The amount of tables.
- *  table_size   - The amount of rows in one table.
- *  row_size     - The size of a row, in bytes.
+ *  table_amount  - The amount of tables, or 0 if size is to be determined by a SizeDeterminer.
+ *  table_size    - The amount of rows in one table, or 0 if size is to be determined by a SizeDeterminer.
+ *  row_size      - The size of a row, in bytes, or 0 if size is to be determined by a SizeDeterminer.
+ *  det_amount    - Determines the amount of tables to be allocated. Use nullptr to ignore.
+ *  det_tablesize - Determines the size of each table. Use nullptr to ignore.
+ *  det_rowsize   - Determines the size of a row, in bytes. Use nullptr to ignore.
  * 
  *  Returns:
  *  GASPI_SUCCESS on success, GASPI_ERROR (or another error code) on error, GASPI_TIMEOUT on timeout.
- *  GASPI_ERR_INV_NUM indicates that at least one of the three parameters was 0.
+ *  GASPI_ERR_INV_NUM indicates that at least one of the three parameters was 0 and its SizeDeterminer was a nullptr or returned 0.
  */
-gaspi_return_t lazygaspi_init(lazygaspi_id_t table_amount, lazygaspi_id_t table_size, gaspi_size_t row_size);
+gaspi_return_t lazygaspi_init(lazygaspi_id_t table_amount, lazygaspi_id_t table_size, gaspi_size_t row_size, 
+                              SizeDeterminer det_amount = nullptr, SizeDeterminer det_tablesize = nullptr,
+                              SizeDeterminer det_rowsize = nullptr);
 
 /** Outputs a pointer to the "info" segment.
  *  

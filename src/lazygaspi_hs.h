@@ -51,8 +51,9 @@ struct LazyGaspiRowData{
  *  Parameters:
  *  rank - The current rank, as given by gaspi_proc_rank.
  *  total - The total number of ranks, as given by gaspi_proc_num.
+ *  data  - User data passed to lazygaspi_init.
  */
-typedef gaspi_size_t (*SizeDeterminer)(gaspi_rank_t rank, gaspi_rank_t total);
+typedef gaspi_size_t (*SizeDeterminer)(gaspi_rank_t rank, gaspi_rank_t total, void* data);
 
 /** Initializes LazyGASPI.
  * 
@@ -69,8 +70,9 @@ typedef gaspi_size_t (*SizeDeterminer)(gaspi_rank_t rank, gaspi_rank_t total);
  *  GASPI_ERR_INV_NUM indicates that at least one of the three parameters was 0 and its SizeDeterminer was a nullptr or returned 0.
  */
 gaspi_return_t lazygaspi_init(lazygaspi_id_t table_amount, lazygaspi_id_t table_size, gaspi_size_t row_size, 
-                              SizeDeterminer det_amount = nullptr, SizeDeterminer det_tablesize = nullptr,
-                              SizeDeterminer det_rowsize = nullptr);
+                              SizeDeterminer det_amount = nullptr, void* data_amount = nullptr, 
+                              SizeDeterminer det_tablesize = nullptr, void* data_tablesize = nullptr, 
+                              SizeDeterminer det_rowsize = nullptr, void* data_rowsize = nullptr);
 
 /** Outputs a pointer to the "info" segment.
  *  

@@ -16,10 +16,9 @@
 
 #include "lazygaspi_hs.h"
 
-
 #define DIE_ON_ERROR_OUT(function, msg, out)                                                                    \
     do {                                                                                                        \
-        out << "ERROR: " << function << "[" << __FILE__ << ":" << __LINE__ << "]: " << msg << std::flush;       \
+        out << "ERROR: " << function << "[" << __FILE__ << ":" << __LINE__ << "]: " << msg << std::endl;       \
         abort();                                                                                                \
     } while(0);
 
@@ -52,6 +51,14 @@ inline double get_time(){
     return std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::high_resolution_clock::now().
                                                                      time_since_epoch()).count(); 
 }
+
+#ifdef DEBUG
+#define PRINT_ON_ERROR(msg) std::cout << "Error [" << __FILE__ << ':' << __LINE__ << "] " << msg << std::endl;
+#else
+#define PRINT_ON_ERROR(msg)
+#endif
+
+#define ERROR_CHECK {if(r != GASPI_SUCCESS) { PRINT_ON_ERROR(r); return r; }}
 
 /** Sets up the default file output stream for print messages.
  *  Hits a barrier of the provided group. Default is all ranks.
@@ -134,6 +141,7 @@ static gaspi_return_t gaspi_wait_for_queue(gaspi_queue_id_t q, int min, int* fre
  */
 template<typename T>
 static gaspi_return_t gaspi_malloc(gaspi_segment_id_t seg, gaspi_size_t size, T* ptr) {
+    if(size == 0) return GASPI_ERR_INV_SEGSIZE;
     auto r = gaspi_segment_create(seg, size, GASPI_GROUP_ALL, GASPI_BLOCK, GASPI_MEM_UNINITIALIZED);
     if(r != GASPI_SUCCESS) return r;
 
@@ -156,6 +164,7 @@ static gaspi_return_t gaspi_malloc(gaspi_segment_id_t seg, gaspi_size_t size, T*
  */
 static gaspi_return_t gaspi_segment_create_noblock(gaspi_segment_id_t seg, gaspi_size_t size, 
                                                    gaspi_alloc_policy_flags policy = GASPI_MEM_UNINITIALIZED){
+    if(size == 0) return GASPI_ERR_INV_SEGSIZE;
     auto r = gaspi_segment_alloc(seg, size, policy);
     if(r != GASPI_SUCCESS) return r;
     gaspi_rank_t n; 
@@ -305,13 +314,20 @@ static gaspi_return_t send_notification(gaspi_segment_id_t seg, gaspi_rank_t ran
  *  GASPI_SUCCESS on success, GASPI_ERROR (or another error code) on error, GASPI_TIMEOUT on timeout.
  */
 static gaspi_return_t read(gaspi_segment_id_t from, gaspi_segment_id_t to, gaspi_offset_t offset_from, gaspi_offset_t offset_to,
-                           gaspi_size_t size, gaspi_rank_t rank, gaspi_timeout_t timeout = GASPI_BLOCK, gaspi_queue_id_t q = 0){
+                           gaspi_size_t size, gaspi_rank_t rank, std::ofstream* output = nullptr, 
+                           gaspi_timeout_t timeout = GASPI_BLOCK, gaspi_queue_id_t q = 0){
     int free;
-    auto r = gaspi_wait_for_queue(1, q, &free); if(r != GASPI_SUCCESS) return r;
-    
-    r = gaspi_read(to, offset_to, rank, from, offset_from, size, q, timeout); if(r != GASPI_SUCCESS) return r;
 
-    return gaspi_wait(q, GASPI_BLOCK);
+    if(output) *output << "Started wait for queue to free enough slots..." << std::endl;
+    auto r = gaspi_wait_for_queue(1, q, &free); ERROR_CHECK;
+
+    if(output) *output << "Started actual read..." << std::endl;
+    r = gaspi_read(to, offset_to, rank, from, offset_from, size, q, timeout); ERROR_CHECK;
+
+    if(output) *output << "Started wait for queue to flush..." << std::endl;
+    r = gaspi_wait(q, GASPI_BLOCK); ERROR_CHECK;
+
+    return GASPI_SUCCESS;
 }
 
 /** Reads data from a segment to another of the same ID, at the same offset.
@@ -328,8 +344,8 @@ static gaspi_return_t read(gaspi_segment_id_t from, gaspi_segment_id_t to, gaspi
  * GASPI_SUCCESS on success, GASPI_ERROR (or another error code) on error, GASPI_TIMEOUT on timeout.
  */
 static gaspi_return_t readcopy(gaspi_segment_id_t seg, gaspi_offset_t offset, gaspi_size_t size, gaspi_rank_t rank,
-                               gaspi_timeout_t timeout = GASPI_BLOCK, gaspi_queue_id_t q = 0){
-    return read(seg, seg, offset, offset, size, rank, timeout, q);
+                               std::ofstream* output = nullptr, gaspi_timeout_t timeout = GASPI_BLOCK, gaspi_queue_id_t q = 0){
+    return read(seg, seg, offset, offset, size, rank, output, timeout, q);
 }
 
 /**Writes from one segment to another. Waits for the given queue to have room for the request if it is full.

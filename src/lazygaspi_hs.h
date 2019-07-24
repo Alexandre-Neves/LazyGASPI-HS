@@ -55,6 +55,20 @@ struct LazyGaspiRowData{
  */
 typedef gaspi_size_t (*SizeDeterminer)(gaspi_rank_t rank, gaspi_rank_t total, void* data);
 
+struct ShardingOptions{
+    //How many rows will be assigned to a given process at a time. For example, a value of one means rows are distributed one at 
+    //a time through all processes, while a value equal to the size of a table means tables are assigned one at a time.
+    lazygaspi_id_t block_size;
+    ShardingOptions(lazygaspi_id_t size) : block_size(size){};
+};
+
+struct CachingOptions{
+    typedef void (*CacheHash)(lazygaspi_id_t row_id, lazygaspi_id_t table_id, LazyGaspiProcessInfo* info);
+    CacheHash hash;
+    gaspi_size_t size;
+    CachingOptions(CacheHash hash, gaspi_size_t size) : hash(hash), size(size) {};
+};
+
 /** Initializes LazyGASPI.
  * 
  *  Parameters:
@@ -72,7 +86,8 @@ typedef gaspi_size_t (*SizeDeterminer)(gaspi_rank_t rank, gaspi_rank_t total, vo
 gaspi_return_t lazygaspi_init(lazygaspi_id_t table_amount, lazygaspi_id_t table_size, gaspi_size_t row_size, 
                               SizeDeterminer det_amount = nullptr, void* data_amount = nullptr, 
                               SizeDeterminer det_tablesize = nullptr, void* data_tablesize = nullptr, 
-                              SizeDeterminer det_rowsize = nullptr, void* data_rowsize = nullptr);
+                              SizeDeterminer det_rowsize = nullptr, void* data_rowsize = nullptr,
+                              ShardingOptions shard_options, CachingOptions cache_options);
 
 /** Outputs a pointer to the "info" segment.
  *  
@@ -147,4 +162,11 @@ gaspi_return_t lazygaspi_clock();
  * GASPI_SUCCESS on success, GASPI_ERROR (or another error code) on error, GASPI_TIMEOUT on timeout.
  */
 gaspi_return_t lazygaspi_term();
+
+#define LAZYGASPI_HS_HASH_ROW [&](lazygaspi_id_t row_id, lazygaspi_id_t table_id, LazyGaspiProcessInfo* info){\
+                                return info->table_size * table_id + row_id; }
+
+#define LAZYGASPI_HS_HASH_TABLE [&](lazygaspi_id_t row_id, lazygaspi_id_t table_id, LazyGaspiProcessInfo* info){\
+                                    return info->table_amount * row_id + table_id; }
+
 #endif

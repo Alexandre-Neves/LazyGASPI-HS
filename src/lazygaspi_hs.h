@@ -16,6 +16,23 @@ typedef unsigned long lazygaspi_id_t;
 typedef unsigned long lazygaspi_age_t;
 typedef unsigned long lazygaspi_slack_t;
 
+struct LazyGaspiProcessInfo;
+
+struct ShardingOptions{
+    //How many rows will be assigned to a given process at a time. For example, a value of one means rows are distributed one at 
+    //a time through all processes, while a value equal to the size of a table means tables are assigned one at a time.
+    lazygaspi_id_t block_size;
+    ShardingOptions(lazygaspi_id_t size) : block_size(size){};
+};
+
+struct CachingOptions{
+    typedef gaspi_offset_t (*CacheHash)(lazygaspi_id_t row_id, lazygaspi_id_t table_id, LazyGaspiProcessInfo* info);
+    CacheHash hash;
+    //The size of the cache, in rows.
+    gaspi_size_t size;
+    CachingOptions(CacheHash hash, gaspi_size_t size) : hash(hash), size(size) {};
+};
+
 //None of the fields in this structure should be altered, except for the out field.
 struct LazyGaspiProcessInfo{
     //Value returned by gaspi_proc_rank.
@@ -35,6 +52,9 @@ struct LazyGaspiProcessInfo{
     lazygaspi_age_t communicator;
     //Stream used to output lazygaspi debug messages. Use nullptr to ignore lazygaspi output.
     std::ofstream* out;
+
+    ShardingOptions shardOpts;
+    CachingOptions cacheOpts;
 };
 
 struct LazyGaspiRowData{
@@ -55,20 +75,6 @@ struct LazyGaspiRowData{
  */
 typedef gaspi_size_t (*SizeDeterminer)(gaspi_rank_t rank, gaspi_rank_t total, void* data);
 
-struct ShardingOptions{
-    //How many rows will be assigned to a given process at a time. For example, a value of one means rows are distributed one at 
-    //a time through all processes, while a value equal to the size of a table means tables are assigned one at a time.
-    lazygaspi_id_t block_size;
-    ShardingOptions(lazygaspi_id_t size) : block_size(size){};
-};
-
-struct CachingOptions{
-    typedef void (*CacheHash)(lazygaspi_id_t row_id, lazygaspi_id_t table_id, LazyGaspiProcessInfo* info);
-    CacheHash hash;
-    gaspi_size_t size;
-    CachingOptions(CacheHash hash, gaspi_size_t size) : hash(hash), size(size) {};
-};
-
 /** Initializes LazyGASPI.
  * 
  *  Parameters:
@@ -78,6 +84,9 @@ struct CachingOptions{
  *  det_amount    - Determines the amount of tables to be allocated. Use nullptr to ignore.
  *  det_tablesize - Determines the size of each table. Use nullptr to ignore.
  *  det_rowsize   - Determines the size of a row, in bytes. Use nullptr to ignore.
+ *  shard_options - Indicates how to shard data among processes. Use block_size = 0 to indicate default sharding (by table).
+ *  caching_options - Indicates how to cache data. Use hash = nullptr or size = 0 to indicate default hashing (stores as many rows
+ *                    as a table can hold).
  * 
  *  Returns:
  *  GASPI_SUCCESS on success, GASPI_ERROR (or another error code) on error, GASPI_TIMEOUT on timeout.
@@ -87,7 +96,8 @@ gaspi_return_t lazygaspi_init(lazygaspi_id_t table_amount, lazygaspi_id_t table_
                               SizeDeterminer det_amount = nullptr, void* data_amount = nullptr, 
                               SizeDeterminer det_tablesize = nullptr, void* data_tablesize = nullptr, 
                               SizeDeterminer det_rowsize = nullptr, void* data_rowsize = nullptr,
-                              ShardingOptions shard_options, CachingOptions cache_options);
+                              ShardingOptions shard_options = ShardingOptions(0), 
+                              CachingOptions cache_options = CachingOptions(nullptr, 0));
 
 /** Outputs a pointer to the "info" segment.
  *  
@@ -163,10 +173,10 @@ gaspi_return_t lazygaspi_clock();
  */
 gaspi_return_t lazygaspi_term();
 
-#define LAZYGASPI_HS_HASH_ROW [&](lazygaspi_id_t row_id, lazygaspi_id_t table_id, LazyGaspiProcessInfo* info){\
+#define LAZYGASPI_HS_HASH_ROW [](lazygaspi_id_t row_id, lazygaspi_id_t table_id, LazyGaspiProcessInfo* info){\
                                 return info->table_size * table_id + row_id; }
 
-#define LAZYGASPI_HS_HASH_TABLE [&](lazygaspi_id_t row_id, lazygaspi_id_t table_id, LazyGaspiProcessInfo* info){\
+#define LAZYGASPI_HS_HASH_TABLE [](lazygaspi_id_t row_id, lazygaspi_id_t table_id, LazyGaspiProcessInfo* info){\
                                     return info->table_amount * row_id + table_id; }
 
 #endif

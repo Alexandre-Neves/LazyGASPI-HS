@@ -3,21 +3,28 @@
 #include "gaspi_utils.h"
 #include <cstring>
 
-#define ERROR_CHECK if(r != GASPI_SUCCESS) return r
-
 gaspi_return_t lazygaspi_write(lazygaspi_id_t row_id, lazygaspi_id_t table_id, void* row){
     if(row == nullptr) return GASPI_ERR_NULLPTR;
 
     LazyGaspiProcessInfo* info;
     auto r = lazygaspi_get_info(&info); ERROR_CHECK;
 
-    if(row_id >= info->table_size || table_id >= info->table_amount) return GASPI_ERR_INV_NUM;
+    if(row_id >= info->table_size || table_id >= info->table_amount){
+        PRINT_DEBUG_INTERNAL("Row was " << row_id << " but max was " << info->table_size << " and table was " << table_id 
+                             << " but max was " << info->table_amount);
+        return GASPI_ERR_INV_NUM;
+    }
     
     PRINT_DEBUG_INTERNAL("Writing row " << row_id << " from table " << table_id << " to server. Age: " << info->age << '.');
 
-    auto rank = get_rank_of_table(table_id, info->n);
-    auto offset_rows = get_offset_in_rows_segment(info, row_id, table_id);
-    auto offset_cache = get_offset_in_cache(info, row_id, table_id);
+    gaspi_rank_t rank; gaspi_offset_t offset_rows;
+    std::tie(rank, offset_rows) = get_row_location(info, row_id, table_id);
+
+    offset_rows *= sizeof(LazyGaspiRowData) + info->row_size + info->n * sizeof(lazygaspi_age_t);
+    auto offset_cache = get_offset_in_cache(info, row_id, table_id) * (sizeof(LazyGaspiRowData) + info->row_size);
+
+    PRINT_DEBUG_INTERNAL("Rank is " << rank << ", rows offset is " << offset_rows << " and cache offset is " << offset_cache 
+                         << ". Cache size is " << info->cacheOpts.size);
 
     //Write to cache.
     gaspi_pointer_t ptr;
@@ -27,7 +34,9 @@ gaspi_return_t lazygaspi_write(lazygaspi_id_t row_id, lazygaspi_id_t table_id, v
     memcpy((char*)ptr + offset_cache + sizeof(LazyGaspiRowData), row, info->row_size);
 
     //Write to rows segment of proper rank.
-    return writenotify(SEGMENT_ID_CACHE, SEGMENT_ID_ROWS, offset_cache, offset_rows, 
+    r = writenotify(SEGMENT_ID_CACHE, SEGMENT_ID_ROWS, offset_cache, offset_rows, 
                 sizeof(LazyGaspiRowData) + info->row_size, rank, NOTIF_ID_ROW_WRITTEN);
+    ERROR_CHECK;
+    return gaspi_wait(0, GASPI_BLOCK);  //Make sure write request is fulfilled before cache is used again for another write.
 }
 

@@ -2,14 +2,17 @@
 #include "gaspi_utils.h"
 #include "utils.h"
 
-#define ERROR_CHECK { if(r != GASPI_SUCCESS){ std::cout << "Error " << r << " at " << __FILE__ << ':' << __LINE__ << std::endl; return r; }}
-
 /* Allocates: info; rows; cache. Sets n and id for info. Hits barrier for all. */
-gaspi_return_t allocate_segments(gaspi_offset_t table_size, gaspi_offset_t table_amount, gaspi_size_t row_size, LazyGaspiProcessInfo** info);
+gaspi_return_t allocate_segments(gaspi_offset_t table_size, gaspi_offset_t table_amount, gaspi_size_t row_size, 
+                                 LazyGaspiProcessInfo* info);
 
 gaspi_return_t lazygaspi_init(lazygaspi_id_t table_amount, lazygaspi_id_t table_size, gaspi_size_t row_size, 
                               SizeDeterminer det_amount, void* data_amount, SizeDeterminer det_tablesize, void* data_tablesize, 
-                              SizeDeterminer det_rowsize, void* data_rowsize){
+                              SizeDeterminer det_rowsize, void* data_rowsize, ShardingOptions shard_options,
+                              CachingOptions cache_options){
+    if(shard_options.block_size == 0) shard_options.block_size = table_size;
+    if(cache_options.hash == nullptr || cache_options.size == 0) 
+        cache_options = CachingOptions(LAZYGASPI_HS_HASH_ROW, table_size);
 
     auto r = gaspi_proc_init(GASPI_BLOCK); ERROR_CHECK;
 
@@ -34,7 +37,10 @@ gaspi_return_t lazygaspi_init(lazygaspi_id_t table_amount, lazygaspi_id_t table_
         if(!(row_size = det_rowsize(info->id, info->n, data_rowsize))) return GASPI_ERR_INV_NUM;
     }
 
-    r = allocate_segments(table_size, table_amount, row_size, &info); ERROR_CHECK;
+    info->shardOpts = shard_options;
+    info->cacheOpts = cache_options;
+
+    r = allocate_segments(table_size, table_amount, row_size, info); ERROR_CHECK;
 
     info->row_size = row_size;
     info->table_amount = table_amount;
@@ -47,13 +53,19 @@ gaspi_return_t lazygaspi_init(lazygaspi_id_t table_amount, lazygaspi_id_t table_
 gaspi_return_t allocate_segments(lazygaspi_id_t table_size, lazygaspi_id_t table_amount, gaspi_size_t row_size, 
                                  LazyGaspiProcessInfo* info){
     //An entry for this segment is a metadata tag, the row itself, and the pending prefetch requests (n slots).
-    auto r = gaspi_segment_create_noblock(SEGMENT_ID_ROWS, ( sizeof(LazyGaspiRowData) + row_size + info->n * sizeof(lazygaspi_age_t) ) * 
-                                     get_row_amount(table_size, table_amount, info->n, info->id), GASPI_MEM_INITIALIZED);
+    auto row_amount = get_row_amount(table_size, table_amount, info->n, info->id, info->shardOpts);
+
+    auto rows_table_size = (sizeof(LazyGaspiRowData) + row_size + info->n * sizeof(lazygaspi_age_t)) * row_amount;
+    auto r = gaspi_segment_create_noblock(SEGMENT_ID_ROWS, rows_table_size, GASPI_MEM_INITIALIZED);
     ERROR_CHECK;
 
     //An entry for this segment is a metadata tag and the row itself.
-    r = gaspi_segment_create_noblock(SEGMENT_ID_CACHE, get_cache_size(row_size, table_amount), GASPI_MEM_INITIALIZED);
+    auto cache_size = info->cacheOpts.size * (sizeof(LazyGaspiRowData) + row_size);
+    r = gaspi_segment_create_noblock(SEGMENT_ID_CACHE, cache_size, GASPI_MEM_INITIALIZED);
     ERROR_CHECK;
+
+    PRINT_DEBUG_INTERNAL("Allocated cache with " << cache_size << " bytes (" << info->cacheOpts.size << " entries) and rows with "
+                         << rows_table_size << " bytes (" << row_amount << " entries).");
 
     return GASPI_BARRIER;
 }

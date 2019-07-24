@@ -2,8 +2,6 @@
 #include "utils.h"
 #include "gaspi_utils.h"
 
-#define ERROR_CHECK if(r != GASPI_SUCCESS) return r
-
 gaspi_return_t lazygaspi_fulfil_prefetches(){
     LazyGaspiProcessInfo* info;
     auto r = lazygaspi_get_info(&info); ERROR_CHECK;
@@ -22,7 +20,7 @@ gaspi_return_t lazygaspi_fulfil_prefetches(){
     r = gaspi_segment_ptr(SEGMENT_ID_ROWS, &rows_table); ERROR_CHECK;
 
     const auto entry_size = sizeof(LazyGaspiProcessInfo) + info->row_size + info->n * sizeof(lazygaspi_age_t);
-    const auto row_amount = get_row_amount(info->table_size, info->table_amount, info->n, info->id);
+    const auto row_amount = get_row_amount(info->table_size, info->table_amount, info->n, info->id, info->shardOpts);
 
     for(gaspi_rank_t rank = 0; rank < info->n; rank++)
     for(gaspi_offset_t i = 0; i < row_amount; i++){
@@ -34,8 +32,8 @@ gaspi_return_t lazygaspi_fulfil_prefetches(){
                 PRINT_DEBUG_INTERNAL("Writing row to requesting rank. Minimum age was " << min << ", current age was " << data->age 
                             << ". ID's were " << data->row_id << '/' << data->table_id << '.');
 
-                r = write(SEGMENT_ID_ROWS, SEGMENT_ID_CACHE, entry_size * i, get_offset_in_cache(info, i % info->table_size, 
-                          info->id + (i / info->table_size) * info->n), sizeof(LazyGaspiRowData) + info->row_size, rank);
+                r = write(SEGMENT_ID_ROWS, SEGMENT_ID_CACHE, entry_size * i, get_offset_in_cache(info, data->row_id, data->table_id), 
+                          sizeof(LazyGaspiRowData) + info->row_size, rank);
                 ERROR_CHECK;
             }
         } 
@@ -50,17 +48,18 @@ gaspi_return_t lazygaspi_prefetch(lazygaspi_id_t row_id, lazygaspi_id_t table_id
 
     PRINT_DEBUG_INTERNAL("Prefetching " << row_id << '/' << table_id << " with slack " << slack << " and age " << info->age << '.');
 
-    auto rank = get_rank_of_table(table_id, info->n);
+    gaspi_rank_t rank;
+    gaspi_offset_t offset;
+    std::tie(rank, offset) = get_row_location(info, row_id, table_id);
     if(rank == info->id){
         PRINT_DEBUG_INTERNAL("Tried to prefetch from own rows table.");
         return GASPI_SUCCESS;
     }
-    
-    auto flag_offset = row_id * (sizeof(LazyGaspiRowData) + info->row_size + info->n * sizeof(lazygaspi_age_t)) + 
-                                 sizeof(LazyGaspiRowData) + info->row_size + rank * sizeof(lazygaspi_age_t);
+    auto flag_offset = offset * (sizeof(LazyGaspiRowData) + info->row_size + info->n * sizeof(lazygaspi_age_t)) + 
+                        sizeof(LazyGaspiRowData) + info->row_size + info->id * sizeof(lazygaspi_age_t);
     info->communicator = get_min_age(info->age, slack);
 
     PRINT_DEBUG_INTERNAL("Writing prefetch request to server...");
-    return write(SEGMENT_ID_INFO, SEGMENT_ID_ROWS, offsetof(LazyGaspiProcessInfo, communicator), flag_offset, sizeof(lazygaspi_age_t),
-                 rank);
+    return write(SEGMENT_ID_INFO, SEGMENT_ID_ROWS, offsetof(LazyGaspiProcessInfo, communicator), 
+                 flag_offset,  sizeof(lazygaspi_age_t), rank);
 }

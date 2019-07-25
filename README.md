@@ -28,10 +28,17 @@ Arguments passed to compile.sh are relayed to g++ before any other parameters. F
 ```
   ./compile.sh -D MY_MACRO -D MY_MACRO2
 ```  
-compiles the test with the two predefined macros `MY_MACRO` and `MY_MACRO2`.
+compiles the test with the two predefined macros `MY_MACRO` and `MY_MACRO2`.  
+  
+The following macros can be used with compile.sh:  
 
-Debug Macros:
-- DEBUG_INTERNAL: Prints debug messages from the library itself into the output file (see [Output](#Output) section).
+| Macros            | Description                                                                                           | 
+| ----------------- | ------------------------------------------------------------------------------------------------------|
+| DEBUG_INTERNAL    | Prints debug messages from the library itself into the output file (see [Output](#Output) section)    |
+| DEBUG_TEST        | Prints debug messages from the test program that are not related to performance into the output file 
+                      (see [Output](#Output) section)                                                                       |
+| DEBUG_PERF        | Prints debug messages from the test program related to performance (run times and quality of the 
+                      result; see [Output](#Output) section)                                                                |  
 
 ## Procedure
 

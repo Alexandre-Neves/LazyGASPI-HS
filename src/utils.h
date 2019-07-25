@@ -16,9 +16,11 @@
 #define NOTIF_ID_ROW_WRITTEN 0
 
 #if (defined (DEBUG) || defined (DEBUG_INTERNAL))
-#define PRINT_DEBUG_INTERNAL(msg) {if(info->out) {*info->out << msg << std::endl; }\
-                                   else std::cout << msg << std::endl; }
+#define PRINT_DEBUG_INTERNAL_OUT(out, msg) if(out){ *out << msg << std::endl; }\
+                                           else{ std::cout << msg << std::endl; }
+#define PRINT_DEBUG_INTERNAL(msg) PRINT_DEBUG_INTERNAL_OUT(info->out, msg)
 #else
+#define PRINT_DEBUG_INTERNAL_OUT(out, msg)
 #define PRINT_DEBUG_INTERNAL(msg)
 #endif
 
@@ -37,10 +39,15 @@
 #endif
 
 #if defined(DEBUG) || defined(DEBUG_INTERNAL) || defined(DEBUG_TEST) || defined(DEBUG_PERF)
-#define PRINT_DEBUG(msg) {if(info->out) {*info->out << msg << std::endl; }\
-                                   else std::cout << msg << std::endl; }
+#define PRINT_DEBUG_OUT(out, msg) { if(out) {*out << msg << std::endl; }\
+                                  else std::cout << msg << std::endl; }
+#define PRINT_DEBUG(msg) PRINT_DEBUG_OUT(info->out, msg)
+#define PRINT_TIMESTAMP { if(info->out){ timestamp(*info->out) << std::endl;}\
+                          else timestamp(std::cout) << std::endl; }
 #else
+#define PRINT_DEBUG_OUT(out, msg)
 #define PRINT_DEBUG(msg)
+#define PRINT_TIMESTAMP
 #endif
 
 struct RowLocationEntry{

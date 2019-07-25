@@ -35,10 +35,8 @@ The following macros can be used with compile.sh:
 | Macros            | Description                                                                                           | 
 | ----------------- | ------------------------------------------------------------------------------------------------------|
 | DEBUG_INTERNAL    | Prints debug messages from the library itself into the output file (see [Output](#Output) section)    |
-| DEBUG_TEST        | Prints debug messages from the test program that are not related to performance into the output file 
-                      (see [Output](#Output) section)                                                                       |
-| DEBUG_PERF        | Prints debug messages from the test program related to performance (run times and quality of the 
-                      result; see [Output](#Output) section)                                                                |  
+| DEBUG_TEST        | Prints debug messages from the test program that are not related to performance into the output file                         (see [Output](#Output) section)|
+| DEBUG_PERF        | Prints debug messages from the test program related to performance (run times and quality of the                             result; see [Output](#Output) section)                                                                |  
 
 ## Procedure
 

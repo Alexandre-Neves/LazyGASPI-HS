@@ -33,7 +33,7 @@ struct CachingOptions{
     CachingOptions(CacheHash hash, gaspi_size_t size) : hash(hash), size(size) {};
 };
 
-//None of the fields in this structure should be altered, except for the out field.
+//None of the fields in this structure should be altered, except for the out and offset_slack fields.
 struct LazyGaspiProcessInfo{
     //Value returned by gaspi_proc_rank.
     gaspi_rank_t id;
@@ -52,6 +52,9 @@ struct LazyGaspiProcessInfo{
     lazygaspi_age_t communicator;
     //Stream used to output lazygaspi debug messages. Use nullptr to ignore lazygaspi output.
     std::ofstream* out;
+    //True if minimum age for read rows will be the current age minus the slack minus 1.
+    //If false, minimum age for read rows will be the current age minus the slack.
+    bool offset_slack = true;
 
     ShardingOptions shardOpts;
     CachingOptions cacheOpts;

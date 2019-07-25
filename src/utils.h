@@ -64,8 +64,8 @@ struct IntraComm {
     IntraComm() = default;
 };
 
-static inline lazygaspi_age_t get_min_age(lazygaspi_age_t current, lazygaspi_age_t slack){
-    return (current < slack + 2) ? 1 : (current - slack - 1);
+static inline lazygaspi_age_t get_min_age(lazygaspi_age_t current, lazygaspi_age_t slack, bool offset){
+    return (current < slack + 1 + offset) ? 1 : (current - slack - offset);
 }
 
 /** Offset is in rows, not bytes. */

@@ -75,29 +75,36 @@ struct LazyGaspiRowData{
  */
 typedef gaspi_size_t (*SizeDeterminer)(gaspi_rank_t rank, gaspi_rank_t total, void* data);
 
+/**A function that creates and sets the output file stream for the info segment.
+ * Info is guaranteed to have fields `id` and `n` filled before this function is called. 
+ */
+typedef void (*OutputCreator)(LazyGaspiProcessInfo* info);
+
 /** Initializes LazyGASPI.
  * 
  *  Parameters:
- *  table_amount  - The amount of tables, or 0 if size is to be determined by a SizeDeterminer.
- *  table_size    - The amount of rows in one table, or 0 if size is to be determined by a SizeDeterminer.
- *  row_size      - The size of a row, in bytes, or 0 if size is to be determined by a SizeDeterminer.
- *  det_amount    - Determines the amount of tables to be allocated. Use nullptr to ignore.
- *  det_tablesize - Determines the size of each table. Use nullptr to ignore.
- *  det_rowsize   - Determines the size of a row, in bytes. Use nullptr to ignore.
- *  shard_options - Indicates how to shard data among processes. Use block_size = 0 to indicate default sharding (by table).
+ *  table_amount    - The amount of tables, or 0 if size is to be determined by a SizeDeterminer.
+ *  table_size      - The amount of rows in one table, or 0 if size is to be determined by a SizeDeterminer.
+ *  row_size        - The size of a row, in bytes, or 0 if size is to be determined by a SizeDeterminer.
+ *  shard_options   - Indicates how to shard data among processes. Use block_size = 0 to indicate default sharding (by table).
  *  caching_options - Indicates how to cache data. Use hash = nullptr or size = 0 to indicate default hashing (stores as many rows
  *                    as a table can hold).
+ *  output          - Output file stream for debug messages. Use nullptr to ignore.
+ *  det_amount      - Determines the amount of tables to be allocated. Use nullptr to ignore.
+ *  det_tablesize   - Determines the size of each table. Use nullptr to ignore.
+ *  det_rowsize     - Determines the size of a row, in bytes. Use nullptr to ignore.
  * 
  *  Returns:
  *  GASPI_SUCCESS on success, GASPI_ERROR (or another error code) on error, GASPI_TIMEOUT on timeout.
  *  GASPI_ERR_INV_NUM indicates that at least one of the three parameters was 0 and its SizeDeterminer was a nullptr or returned 0.
  */
 gaspi_return_t lazygaspi_init(lazygaspi_id_t table_amount, lazygaspi_id_t table_size, gaspi_size_t row_size, 
+                              ShardingOptions shard_options = ShardingOptions(0), 
+                              CachingOptions cache_options = CachingOptions(nullptr, 0),
+                              OutputCreator outputCreator = nullptr,
                               SizeDeterminer det_amount = nullptr, void* data_amount = nullptr, 
                               SizeDeterminer det_tablesize = nullptr, void* data_tablesize = nullptr, 
-                              SizeDeterminer det_rowsize = nullptr, void* data_rowsize = nullptr,
-                              ShardingOptions shard_options = ShardingOptions(0), 
-                              CachingOptions cache_options = CachingOptions(nullptr, 0));
+                              SizeDeterminer det_rowsize = nullptr, void* data_rowsize = nullptr);
 
 /** Outputs a pointer to the "info" segment.
  *  

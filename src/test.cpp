@@ -38,7 +38,7 @@ void read_comp_write(lazygaspi_id_t proc_table_amount, lazygaspi_id_t table_amou
 auto map = [](ROW_DATA_TYPE* rows, gaspi_size_t row_size, int index){
         return Eigen::Map<ROW, Eigen::Aligned8>(rows + index * row_size, 1, row_size);
 };
-
+//TODO: implement custom sharding and caching options...
 int main(int argc, char** argv){
     int                 ch;
     lazygaspi_slack_t   slack = SLACK;
@@ -48,8 +48,6 @@ int main(int argc, char** argv){
     bool                separate_comp_read = false;
     lazygaspi_id_t      table_size = 0, table_amount = 0;
     gaspi_size_t        row_size = 0;
-
-    
 
     option options[3];
     options[0].name = "separate-write";
@@ -87,13 +85,17 @@ int main(int argc, char** argv){
     
     if(max_iter == 0) max_iter = 1;
 
+    #if (defined DEBUG || defined DEBUG_PERF || defined DEBUG_TEST || defined DEBUG_INTERNAL)
+    SUCCESS_OR_DIE_OUT(std::cout, lazygaspi_init(table_amount, table_size, ROW_SIZE, ShardingOptions(0), CachingOptions(nullptr, 0),
+                                    [](LazyGaspiProcessInfo* info){
+                                        SUCCESS_OR_DIE_OUT(std::cout, gaspi_setup_output("lazygaspi_hs", info->id, &(info->out)));
+                                    }));
+    #else
     SUCCESS_OR_DIE_OUT(std::cout, lazygaspi_init(table_amount, table_size, ROW_SIZE));
-
+    #endif
     
     LazyGaspiProcessInfo* info;
     SUCCESS_OR_DIE_OUT(std::cout, lazygaspi_get_info(&info));
-
-    SUCCESS_OR_DIE_OUT(std::cout, gaspi_setup_output("lazygaspi_hs", info->id, &(info->out)));
 
     ASSERT(info->n != 0, "main");
 
@@ -109,7 +111,7 @@ int main(int argc, char** argv){
     ROW average = ROW(row_size);
     auto data = LazyGaspiRowData();
     
-    timestamp(*info->out) << std::endl;
+    PRINT_TIMESTAMP;
     PRINT_DEBUG("\n\t\t\t//////////////////////\n\t\t\t//\tRANK " << info->id << "      //\n\t\t\t//////////////////////\n");
 
     auto beg_cycle = get_time();
@@ -144,7 +146,7 @@ int main(int argc, char** argv){
     }
     auto end_cycle = get_time();
 
-    PRINT_DEBUG_PERF("\nFinished cycle. Time: " << end_cycle - beg_cycle << " sec.\n");
+    PRINT_DEBUG_PERF("\nFinished program. Time: " << end_cycle - beg_cycle << " sec.\n");
 
     SUCCESS_OR_DIE(GASPI_BARRIER);
 

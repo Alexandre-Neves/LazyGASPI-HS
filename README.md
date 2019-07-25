@@ -37,7 +37,7 @@ The following macros can be used with compile.sh:
 | DEBUG_INTERNAL    | Prints debug messages from the library itself into the output file (see [Output](#Output) section)    |
 | DEBUG_TEST        | Prints debug messages from the test program that are not related to performance into the output file (see [Output](#Output) section) |
 | DEBUG_PERF        | Prints debug messages from the test program related to performance (run times and quality of the result; see [Output](#Output) section) |  
-| DEBUG_GASPI_UTILS | Prints debug from the gaspi_utils header (see [Output](#Output) section)                              |
+| DEBUG_GASPI_UTILS | Prints debug from the `gaspi_utils` header (see [Output](#Output) section)                            |
 | DEBUG             | Same as defining all of the above macros |
   
   

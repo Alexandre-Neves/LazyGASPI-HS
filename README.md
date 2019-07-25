@@ -18,10 +18,12 @@
 # Test.cpp
 
 The test shards data in whole tables and distributes them evenly among all processes. 
-If there are $t$ tables and $n$ processes, then each will get $t / n$ plus one if rank is $< t % n$.
+If there are $t$ tables and `n` processes, then each will get `t / n` plus one if rank is less than  `t % n`.
 Row size is not important, except to increase the amount of data handled.
 
-## Compilation and Usage
+## Compilation & Usage
+
+#### Compilation
 
 Use compile.sh to compile test. Depends on libGPI2.a (GPI-2, version 1.3.0) available at /lib64/ and on the Eigen headers (version 3.3.7).
 Arguments passed to compile.sh are relayed to g++ before any other parameters. For example:  
@@ -41,10 +43,15 @@ The following macros can be used with compile.sh:
 | DEBUG             | Same as defining all of the above macros |
   
   
+#### Usage
 
+
+  
+  
+  
 ## Procedure
 
-Let current rank be X. Let I be stipulated number of iterations (20 by default).  
+Let current rank be X. Let I be the stipulated number of iterations (20 by default).  
 ```
 For iter in {0, ..., I-1}:  
     If iter is 0:  

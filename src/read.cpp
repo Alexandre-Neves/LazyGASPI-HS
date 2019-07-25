@@ -13,7 +13,7 @@ gaspi_return_t lazygaspi_read(lazygaspi_id_t row_id, lazygaspi_id_t table_id, la
 
     if(row_id >= info->table_size || table_id >= info->table_amount) return GASPI_ERR_INV_NUM;
 
-    auto min = get_min_age(info->age, slack);
+    auto min = get_min_age(info->age, slack, info->offset_slack);
 
     gaspi_pointer_t cache;
     r = gaspi_segment_ptr(SEGMENT_ID_CACHE, &cache); ERROR_CHECK;

@@ -57,7 +57,7 @@ gaspi_return_t lazygaspi_prefetch(lazygaspi_id_t row_id, lazygaspi_id_t table_id
     }
     auto flag_offset = offset * (sizeof(LazyGaspiRowData) + info->row_size + info->n * sizeof(lazygaspi_age_t)) + 
                         sizeof(LazyGaspiRowData) + info->row_size + info->id * sizeof(lazygaspi_age_t);
-    info->communicator = get_min_age(info->age, slack);
+    info->communicator = get_min_age(info->age, slack, info->offset_slack);
 
     PRINT_DEBUG_INTERNAL("Writing prefetch request to server...");
     return write(SEGMENT_ID_INFO, SEGMENT_ID_ROWS, offsetof(LazyGaspiProcessInfo, communicator), 

@@ -35,19 +35,19 @@ Debug Macros:
 
 Let current rank be $X$. Let $I$ be stipulated number of iterations (20 by default).  
 ```
-For $iter$ in ${0, ..., I-1}$:  
-    If $iter$ is 0:  
+For iter in {0, ..., I-1}:  
+    If iter is 0:  
         Initialize every entry of every row of every table to 1.  
     Else:  
-        For every table, $T$, assigned to %X%:  
-            For every row $i$ in $T$:  
-                Read row $i$ of $T$.  
-                For every table $T_2$ (including $T$):  
-                    Read $i$-th row of $T_2$.  
+        For every table, T, assigned to X:  
+            For every row i in T:  
+                Read row i of T.  
+                For every table T' (including T):  
+                    Read i-th row of T'.
                     Add to an average vector.  
                 Divide average vector by amount of tables.  
-                Add average vector to row $i$ of $T$.  
-                Write row into the same position of $T$.  
+                Add average vector to row i of T.  
+                Write row into the same position of T.  
 ```
 
 ## Output

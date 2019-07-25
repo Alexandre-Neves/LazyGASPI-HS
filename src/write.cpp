@@ -14,8 +14,6 @@ gaspi_return_t lazygaspi_write(lazygaspi_id_t row_id, lazygaspi_id_t table_id, v
                              << " but max was " << info->table_amount);
         return GASPI_ERR_INV_NUM;
     }
-    
-    PRINT_DEBUG_INTERNAL("Writing row " << row_id << " from table " << table_id << " to server. Age: " << info->age << '.');
 
     gaspi_rank_t rank; gaspi_offset_t offset_rows;
     std::tie(rank, offset_rows) = get_row_location(info, row_id, table_id);
@@ -23,8 +21,9 @@ gaspi_return_t lazygaspi_write(lazygaspi_id_t row_id, lazygaspi_id_t table_id, v
     offset_rows *= sizeof(LazyGaspiRowData) + info->row_size + info->n * sizeof(lazygaspi_age_t);
     auto offset_cache = get_offset_in_cache(info, row_id, table_id) * (sizeof(LazyGaspiRowData) + info->row_size);
 
-    PRINT_DEBUG_INTERNAL("Rank is " << rank << ", rows offset is " << offset_rows << " and cache offset is " << offset_cache 
-                         << ". Cache size is " << info->cacheOpts.size);
+    PRINT_DEBUG_INTERNAL("Writing row " << row_id << " of table " << table_id << " to rank " << rank << " and an age of " 
+                         << info->age << ", where the rows offset is " << offset_rows << " bytes and cache offset is " << 
+                         offset_cache << " bytes. Cache size is " << info->cacheOpts.size << " bytes.");
 
     //Write to cache.
     gaspi_pointer_t ptr;

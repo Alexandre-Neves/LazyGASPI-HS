@@ -1,5 +1,5 @@
 # LazyGASPI-HS
-### Implementation of the LazyGASPI library with a Homogeneous and Sharded implementation
+### LazyGASPI library with a Homogeneous and Sharded (HS) implementation
 
 |  Implementation of            | at            |
 | ----------------------------- | ------------- |
@@ -35,8 +35,8 @@ Debug Macros:
 
 Let current rank be $X$. Let $I$ be stipulated number of iterations (20 by default).  
 For $iter$ in ${0, ..., I-1}$:  
-\t  If $iter$ is 0:  
-\t\t    Initialize every entry of every row of every table to 1.  
+>  If $iter$ is 0:  
+>>    Initialize every entry of every row of every table to 1.  
 \t  Else:  
 \t\t    For every table, $T$, assigned to %X%:  
 \t\t\t      For every row $i$ in $T$:  

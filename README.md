@@ -1,5 +1,5 @@
 # LazyGASPI-HS
-## Implementation of the LazyGASPI library with a Homogeneous and Sharded implementation.
+### Implementation of the LazyGASPI library with a Homogeneous and Sharded implementation
 
 |  Implementation of            | at            |
 | ----------------------------- | ------------- |
@@ -11,10 +11,10 @@
 | lazygaspi_write               | write.cpp     |
 | lazygaspi_clock               | general.cpp   |
 | lazygaspi_term                | general.cpp   |
-
-
-
-
+  
+  
+  
+  
 # Test.cpp
 
 The test shards data in whole tables and distributes them evenly among all processes. 
@@ -35,18 +35,18 @@ Debug Macros:
 
 Let current rank be $X$. Let $I$ be stipulated number of iterations (20 by default).  
 For $iter$ in ${0, ..., I-1}$:  
-    If $iter$ is 0:  
-        Initialize every entry of every row of every table to 1.  
-    Else:  
-        For every table, $T$, assigned to %X%:  
-            For every row $i$ in $T$:  
-                Read row $i$ of $T$.  
-                For every table $T_2$ (including $T$):  
-                    Read $i$-th row of $T_2$.  
-                    Add to an average vector.  
-                Divide average vector by amount of tables.  
-                Add average vector to row $i$ of $T$.  
-                Write row into the same position of $T$.  
+\t  If $iter$ is 0:  
+\t\t    Initialize every entry of every row of every table to 1.  
+\t  Else:  
+\t\t    For every table, $T$, assigned to %X%:  
+\t\t\t      For every row $i$ in $T$:  
+\t\t\t\t        Read row $i$ of $T$.  
+\t\t\t\t        For every table $T_2$ (including $T$):  
+\t\t\t\t\t          Read $i$-th row of $T_2$.  
+\t\t\t\t\t          Add to an average vector.  
+\t\t\t\t        Divide average vector by amount of tables.  
+\t\t\t\t        Add average vector to row $i$ of $T$.  
+\t\t\t\t        Write row into the same position of $T$.  
 
 ## Output
 

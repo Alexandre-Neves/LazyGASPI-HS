@@ -25,7 +25,9 @@ Row size is not important, except to increase the amount of data handled.
 
 Use compile.sh to compile test. Depends on libGPI2.a (GPI-2, version 1.3.0) available at /lib64/ and on the Eigen headers (version 3.3.7).
 Arguments passed to compile.sh are relayed to g++ before any other parameters. For example:  
-```    ./compile.sh -D MY_MACRO -D MY_MACRO2```  
+```
+  ./compile.sh -D MY_MACRO -D MY_MACRO2
+```  
 compiles the test with the two predefined macros `MY_MACRO` and `MY_MACRO2`.
 
 Debug Macros:

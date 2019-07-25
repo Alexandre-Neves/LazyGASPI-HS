@@ -2,8 +2,8 @@
  *  LazyGASPI library with a homogeneous and sharded implementation.
  */
 
-#ifndef __H_LAZYGASPI
-#define __H_LAZYGASPI
+#ifndef LAZYGASPI_HS
+#define LAZYGASPI_HS
 
 #include <GASPI.h>
 #include <fstream>

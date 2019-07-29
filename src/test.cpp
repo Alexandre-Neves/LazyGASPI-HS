@@ -38,7 +38,7 @@ void read_comp_write(lazygaspi_id_t proc_table_amount, lazygaspi_id_t table_amou
 auto map = [](ROW_DATA_TYPE* rows, gaspi_size_t row_size, int index){
         return Eigen::Map<ROW, Eigen::Aligned8>(rows + index * row_size, 1, row_size);
 };
-//TODO: implement custom sharding and caching options...
+
 int main(int argc, char** argv){
     int                 ch;
     lazygaspi_slack_t   slack = SLACK;

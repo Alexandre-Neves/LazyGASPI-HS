@@ -37,6 +37,15 @@
 
 #define ASSERT(expr, function) ASSERT_OUT(*info->out, expr, function)
 
+#if defined DEBUG || defined DEBUG_GASPI_UTILS
+#define PRINT_ON_ERROR_OUT(out, msg) { if(out) *out << "Error [" << __FILE__ << ':' << __LINE__ << "] " << msg << std::endl; }
+#else
+#define PRINT_ON_ERROR_OUT(out, msg)
+#endif
+
+#define ERROR_CHECK_OUT(out) {if(r != GASPI_SUCCESS) { PRINT_ON_ERROR_OUT(out, r); return r; }}
+#define ERROR_CHECK ERROR_CHECK_OUT(info->out)
+
 #define GASPI_BARRIER gaspi_barrier(GASPI_GROUP_ALL, GASPI_BLOCK)
 
 /** Prints a timestamp into the stream with the format `[HH:MM:SS]`. */
@@ -51,15 +60,6 @@ inline double get_time(){
     return std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::high_resolution_clock::now().
                                                                      time_since_epoch()).count(); 
 }
-
-#if defined DEBUG || defined DEBUG_GASPI_UTILS
-#define PRINT_ON_ERROR_OUT(out, msg) { if(out) *out << "Error [" << __FILE__ << ':' << __LINE__ << "] " << msg << std::endl; }
-#else
-#define PRINT_ON_ERROR_OUT(out, msg)
-#endif
-
-#define ERROR_CHECK_OUT(out) {if(r != GASPI_SUCCESS) { PRINT_ON_ERROR_OUT(out, r); return r; }}
-#define ERROR_CHECK ERROR_CHECK_OUT(info->out)
 
 /** Sets up the default file output stream for print messages.
  *  Hits a barrier of the provided group. Default is all ranks.
@@ -76,13 +76,7 @@ inline double get_time(){
  */
 static gaspi_return_t gaspi_setup_output(const char* identifier, gaspi_rank_t id, std::ofstream** stream, 
                                          gaspi_group_t group = GASPI_GROUP_ALL){
-    std::stringstream s; 
-    s << "rm -f " << identifier << "*.out"; 
-    system(s.str().c_str());
-
-    auto r = GASPI_BARRIER; ERROR_CHECK_OUT(&std::cout);
-
-    s = std::stringstream();
+    auto s = std::stringstream();
     s << identifier << '_' << id << ".out"; 
     *stream = new std::ofstream(s.str());
     if(*stream == nullptr){
@@ -338,8 +332,7 @@ static gaspi_return_t send_notification(gaspi_segment_id_t seg, gaspi_rank_t ran
  *  GASPI_SUCCESS on success, GASPI_ERROR (or another error code) on error, GASPI_TIMEOUT on timeout.
  */
 static gaspi_return_t read(gaspi_segment_id_t from, gaspi_segment_id_t to, gaspi_offset_t offset_from, gaspi_offset_t offset_to,
-                           gaspi_size_t size, gaspi_rank_t rank, std::ofstream* output = nullptr, 
-                           gaspi_timeout_t timeout = GASPI_BLOCK, gaspi_queue_id_t q = 0){
+                           gaspi_size_t size, gaspi_rank_t rank, gaspi_timeout_t timeout = GASPI_BLOCK, gaspi_queue_id_t q = 0){
     int free;
     auto r = gaspi_wait_for_queue(1, q, &free); ERROR_CHECK_OUT(&std::cout);
 
@@ -362,9 +355,9 @@ static gaspi_return_t read(gaspi_segment_id_t from, gaspi_segment_id_t to, gaspi
  * Returns:
  * GASPI_SUCCESS on success, GASPI_ERROR (or another error code) on error, GASPI_TIMEOUT on timeout.
  */
-static gaspi_return_t readcopy(gaspi_segment_id_t seg, gaspi_offset_t offset, gaspi_size_t size, gaspi_rank_t rank,
-                               std::ofstream* output = nullptr, gaspi_timeout_t timeout = GASPI_BLOCK, gaspi_queue_id_t q = 0){
-    return read(seg, seg, offset, offset, size, rank, output, timeout, q);
+static gaspi_return_t readcopy(gaspi_segment_id_t seg, gaspi_offset_t offset, gaspi_size_t size, gaspi_rank_t rank, 
+                               gaspi_timeout_t timeout = GASPI_BLOCK, gaspi_queue_id_t q = 0){
+    return read(seg, seg, offset, offset, size, rank, timeout, q);
 }
 
 /**Writes from one segment to another. 
@@ -389,7 +382,7 @@ static gaspi_return_t write(gaspi_segment_id_t from, gaspi_segment_id_t to, gasp
     
     auto r = gaspi_wait_for_queue(q, 1); ERROR_CHECK_OUT(&std::cout);
 
-    r = gaspi_write(from, offset_from, rank, to, offset_to, size, 0, GASPI_BLOCK); ERROR_CHECK_OUT(&std::cout);
+    r = gaspi_write(from, offset_from, rank, to, offset_to, size, q, timeout); ERROR_CHECK_OUT(&std::cout);
 
     return GASPI_SUCCESS;
 }

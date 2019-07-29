@@ -68,14 +68,12 @@ inline double get_time(){
  *  identifier - A C string containing the identifier of the program. Does not need to be unique to each rank.
  *  id         - The rank of the current process.
  *  stream     - Output parameter for the newly created output stream.
- *  group      - The group of ranks that must hit the barrier.
  * 
  *  Returns:
  *  GASPI_SUCCESS on success, GASPI_ERROR (or other error codes) on error, or GASPI_TIMEOUT on timeout.
  *  GASPI_ERR_MEMALLOC if stream could not be allocated.
  */
-static gaspi_return_t gaspi_setup_output(const char* identifier, gaspi_rank_t id, std::ofstream** stream, 
-                                         gaspi_group_t group = GASPI_GROUP_ALL){
+static gaspi_return_t gaspi_setup_output(const char* identifier, gaspi_rank_t id, std::ofstream** stream){
     auto s = std::stringstream();
     s << identifier << '_' << id << ".out"; 
     *stream = new std::ofstream(s.str());

@@ -26,7 +26,7 @@ gaspi_return_t lazygaspi_term(){
     r = gaspi_wait(0, GASPI_BLOCK); ERROR_CHECK;
     r = GASPI_BARRIER;              ERROR_CHECK;
 
-    PRINT_DEBUG_INTERNAL("Terminating...");
+    PRINT_DEBUG_INTERNAL("Terminating...\n\n");
 
     if(info->out) delete info->out;
 

@@ -102,7 +102,6 @@ static inline unsigned long get_row_amount(gaspi_offset_t table_size, gaspi_offs
 /** Offset is in rows, not bytes. */
 static inline gaspi_offset_t get_offset_in_cache(LazyGaspiProcessInfo* info, lazygaspi_id_t row_id, lazygaspi_id_t table_id){
     return info->cacheOpts.hash(row_id, table_id, info) % info->cacheOpts.size;
-
 }
 
 /** Returns the minimum age for the current prefetch. 0 indicates no prefetching should occur. Resets flag to 0.
@@ -114,7 +113,7 @@ static inline gaspi_offset_t get_offset_in_cache(LazyGaspiProcessInfo* info, laz
  *  rank - The rank to check for the prefetch flag.
  */
 static inline lazygaspi_age_t get_prefetch(const LazyGaspiProcessInfo* info, const gaspi_pointer_t rows, const gaspi_offset_t row, const gaspi_rank_t rank){
-    auto flag = (lazygaspi_age_t*)((bool*)rows + sizeof(LazyGaspiRowData) + info->row_size + rank * sizeof(lazygaspi_age_t)); 
+    auto flag = (lazygaspi_age_t*)((bool*)rows + row + sizeof(LazyGaspiRowData) + info->row_size + rank * sizeof(lazygaspi_age_t)); 
     if(*flag){
         auto temp = *flag;
         *flag = 0;
@@ -122,7 +121,4 @@ static inline lazygaspi_age_t get_prefetch(const LazyGaspiProcessInfo* info, con
     }
     return 0;
 }
-
-
-
 #endif

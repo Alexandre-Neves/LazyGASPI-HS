@@ -28,7 +28,7 @@ gaspi_return_t lazygaspi_write(lazygaspi_id_t row_id, lazygaspi_id_t table_id, v
     //Write to cache.
     gaspi_pointer_t ptr;
     r = gaspi_segment_ptr(SEGMENT_ID_CACHE, &ptr); ERROR_CHECK;
-    auto data = LazyGaspiRowData(row_id, table_id, info->age);
+    auto data = LazyGaspiRowData(info->age, row_id, table_id);
     memcpy((char*)ptr + offset_cache, &data, sizeof(LazyGaspiRowData));
     memcpy((char*)ptr + offset_cache + sizeof(LazyGaspiRowData), row, info->row_size);
 

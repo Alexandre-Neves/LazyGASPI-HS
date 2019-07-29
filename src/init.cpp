@@ -25,7 +25,6 @@ gaspi_return_t lazygaspi_init(lazygaspi_id_t table_amount, lazygaspi_id_t table_
     if(outputCreator) outputCreator(info);
     
     PRINT_DEBUG_INTERNAL("Allocated info segment for rank " << info->id << ". Total amount of ranks: " << info->n);
-
     if(table_amount == 0) { 
         if(!det_amount) return GASPI_ERR_INV_NUM;
         if(!(table_amount = det_amount(info->id, info->n, data_amount))) return GASPI_ERR_INV_NUM;
@@ -62,11 +61,15 @@ gaspi_return_t allocate_segments(LazyGaspiProcessInfo* info){
     auto cache_size = info->cacheOpts.size * (sizeof(LazyGaspiRowData) + info->row_size);
 
     PRINT_DEBUG_INTERNAL("Allocating cache with " << cache_size << " bytes (" << info->cacheOpts.size << " entries) and rows with "
-                         << rows_table_size << " bytes (" << row_amount << " entries)...");
+                         << rows_table_size << " bytes (" << row_amount << " entries)... Sharding options block size was "
+                         << info->shardOpts.block_size);
 
     //An entry for this segment is a metadata tag, the row itself, and the pending prefetch requests (n slots).
-    auto r = gaspi_segment_create_noblock(SEGMENT_ID_ROWS, rows_table_size, GASPI_MEM_INITIALIZED);
-    ERROR_CHECK;
+    gaspi_return_t r;
+    if(row_amount){
+        r = gaspi_segment_create_noblock(SEGMENT_ID_ROWS, rows_table_size, GASPI_MEM_INITIALIZED);
+        ERROR_CHECK;
+    }
 
     //An entry for this segment is a metadata tag and the row itself.
     r = gaspi_segment_create_noblock(SEGMENT_ID_CACHE, cache_size, GASPI_MEM_INITIALIZED);

@@ -65,8 +65,8 @@ struct LazyGaspiRowData{
     lazygaspi_id_t row_id;
     lazygaspi_id_t table_id;
 
-    LazyGaspiRowData(lazygaspi_id_t row_id, lazygaspi_id_t table_id, lazygaspi_age_t age) : 
-                    row_id(row_id), table_id(table_id), age(age) {};
+    LazyGaspiRowData(lazygaspi_age_t age, lazygaspi_id_t row_id, lazygaspi_id_t table_id) : 
+                     age(age), row_id(row_id), table_id(table_id) {};
     LazyGaspiRowData() : LazyGaspiRowData(0, 0, 0) {}
 };
 

@@ -28,5 +28,7 @@ gaspi_return_t lazygaspi_term(){
 
     PRINT_DEBUG_INTERNAL("Terminating...");
 
+    if(info->out) delete info->out;
+
     return gaspi_proc_term(GASPI_BLOCK);
 }

@@ -16,38 +16,31 @@
 #define NOTIF_ID_ROW_WRITTEN 0
 
 #if (defined (DEBUG) || defined (DEBUG_INTERNAL))
-#define PRINT_DEBUG_INTERNAL_OUT(out, msg) if(out){ *out << msg << std::endl; }\
-                                           else{ std::cout << msg << std::endl; }
-#define PRINT_DEBUG_INTERNAL(msg) PRINT_DEBUG_INTERNAL_OUT(info->out, msg)
+#define PRINT_DEBUG_INTERNAL(msg) *info->out << msg << std::endl
+#define PRINT_DEBUG_INTERNAL_COUT(msg) std::cout << msg << std::endl
 #else
-#define PRINT_DEBUG_INTERNAL_OUT(out, msg)
 #define PRINT_DEBUG_INTERNAL(msg)
+#define PRINT_DEBUG_INTERNAL_COUT(msg)
 #endif
 
 #if (defined (DEBUG) || defined (DEBUG_TEST))
-#define PRINT_DEBUG_TEST(msg) {if(info->out) {*info->out << msg << std::endl; }\
-                                   else std::cout << msg << std::endl; }
+#define PRINT_DEBUG_TEST(msg) *info->out << msg << std::endl
 #else
 #define PRINT_DEBUG_TEST(msg)
 #endif
 
 #if (defined (DEBUG) || defined (DEBUG_PERF))
-#define PRINT_DEBUG_PERF(msg) {if(info->out) {*info->out << msg << std::endl; }\
-                                   else std::cout << msg << std::endl; }
+#define PRINT_DEBUG_PERF(msg) *info->out << msg << std::endl
 #else
 #define PRINT_DEBUG_PERF(msg)
 #endif
 
-#if defined(DEBUG) || defined(DEBUG_INTERNAL) || defined(DEBUG_TEST) || defined(DEBUG_PERF)
-#define PRINT_DEBUG_OUT(out, msg) { if(out) {*out << msg << std::endl; }\
-                                  else std::cout << msg << std::endl; }
-#define PRINT_DEBUG(msg) PRINT_DEBUG_OUT(info->out, msg)
-#define PRINT_TIMESTAMP { if(info->out){ timestamp(*info->out) << std::endl;}\
-                          else timestamp(std::cout) << std::endl; }
+#if defined DEBUG || defined DEBUG_PERF || defined DEBUG_TEST || defined DEBUG_INTERNAL
+#define PRINT_DEBUG(msg) *info->out << msg << std::endl
+#define PRINT_DEBUG_COUT(msg) std::cout << msg << std::endl
 #else
-#define PRINT_DEBUG_OUT(out, msg)
 #define PRINT_DEBUG(msg)
-#define PRINT_TIMESTAMP
+#define PRINT_DEBUG_COUT(msg)
 #endif
 
 struct RowLocationEntry{
@@ -65,7 +58,7 @@ struct IntraComm {
 };
 
 static inline lazygaspi_age_t get_min_age(lazygaspi_age_t current, lazygaspi_age_t slack, bool offset){
-    return (current < slack + 1 + offset) ? 1 : (current - slack - offset);
+    return (current < slack + 1 + (int)offset) ? 1 : (current - slack - (int)offset);
 }
 
 /** Offset is in rows, not bytes. */
@@ -104,6 +97,13 @@ static inline gaspi_offset_t get_offset_in_cache(LazyGaspiProcessInfo* info, laz
     return info->cacheOpts.hash(row_id, table_id, info) % info->cacheOpts.size;
 }
 
+static inline gaspi_size_t get_row_entry_size(LazyGaspiProcessInfo* info){
+    return sizeof(LazyGaspiRowData) + info->row_size + info->n * sizeof(lazygaspi_age_t);
+}
+
+static inline gaspi_offset_t get_prefetch_req_offset(LazyGaspiProcessInfo* info){
+    return sizeof(LazyGaspiRowData) + info->row_size+ info->id * sizeof(lazygaspi_age_t); 
+}
 /** Returns the minimum age for the current prefetch. 0 indicates no prefetching should occur. Resets flag to 0.
  * 
  *  Parameters:

@@ -4,14 +4,18 @@
 #include <cstring>
 
 gaspi_return_t lazygaspi_write(lazygaspi_id_t row_id, lazygaspi_id_t table_id, void* row){
-    if(row == nullptr) return GASPI_ERR_NULLPTR;
 
     LazyGaspiProcessInfo* info;
-    auto r = lazygaspi_get_info(&info); ERROR_CHECK;
+    auto r = lazygaspi_get_info(&info); ERROR_CHECK_COUT;
 
+    PRINT_DEBUG_INTERNAL("Writing row " << row_id << " of table " << table_id << "...");
+
+    if(row == nullptr){
+        PRINT_DEBUG_INTERNAL(" | Error: tried to write nullptr as a row.");
+        return GASPI_ERR_NULLPTR;
+    }
     if(row_id >= info->table_size || table_id >= info->table_amount){
-        PRINT_DEBUG_INTERNAL("Row was " << row_id << " but max was " << info->table_size << " and table was " << table_id 
-                             << " but max was " << info->table_amount);
+        PRINT_DEBUG_INTERNAL(" | Error: row/table ID was out of bounds.");
         return GASPI_ERR_INV_NUM;
     }
 
@@ -21,9 +25,9 @@ gaspi_return_t lazygaspi_write(lazygaspi_id_t row_id, lazygaspi_id_t table_id, v
     offset_rows *= sizeof(LazyGaspiRowData) + info->row_size + info->n * sizeof(lazygaspi_age_t);
     auto offset_cache = get_offset_in_cache(info, row_id, table_id) * (sizeof(LazyGaspiRowData) + info->row_size);
 
-    PRINT_DEBUG_INTERNAL("Writing row " << row_id << " of table " << table_id << " to rank " << rank << " and an age of " 
-                         << info->age << ", where the rows offset is " << offset_rows << " bytes and cache offset is " << 
-                         offset_cache << " bytes. Cache size is " << info->cacheOpts.size << " bytes.");
+    PRINT_DEBUG_INTERNAL(" | Writing row to rank " << rank << " and an age of " << info->age << ", where the rows offset is " 
+                        << offset_rows << " bytes and cache offset is " <<  offset_cache << " bytes. Cache size is " 
+                        << info->cacheOpts.size << " entries.");
 
     //Write to cache.
     gaspi_pointer_t ptr;

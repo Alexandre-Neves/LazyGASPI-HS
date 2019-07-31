@@ -1,7 +1,3 @@
-/**Utility header for GASPI. 
- * Uses code from https://github.com/ExaScience/bpmf
- */
-
 #ifndef __H_GASPI_UTILS
 #define __H_GASPI_UTILS
 
@@ -18,33 +14,40 @@
 
 #define DIE_ON_ERROR_OUT(function, msg, out)                                                                    \
     do {                                                                                                        \
-        out << "ERROR: " << function << "[" << __FILE__ << ":" << __LINE__ << "]: " << msg << std::endl;       \
+        out << "ERROR: " << function << "[" << __FILE__ << ":" << __LINE__ << "]: " << msg << std::endl;        \
         abort();                                                                                                \
     } while(0);
 
 #define DIE_ON_ERROR(function, msg) DIE_ON_ERROR_OUT(function, msg, *info->out)
 
-#define SUCCESS_OR_DIE_OUT(out, f...)       \
-    do {                                    \
-        const gaspi_return_t r = f;         \
-        if (r != GASPI_SUCCESS)             \
-            DIE_ON_ERROR_OUT(#f, r, out);   \
+#define SUCCESS_OR_DIE(f...)                        \
+    do {                                            \
+        const gaspi_return_t r = f;                 \
+        if (r != GASPI_SUCCESS)                     \
+            DIE_ON_ERROR_OUT(#f, r, *info->out);    \
     } while(0); 
-
-#define SUCCESS_OR_DIE(f...) SUCCESS_OR_DIE_OUT(*info->out, f)
+    
+#define SUCCESS_OR_DIE_COUT(f...)                   \
+    do {                                            \
+        const gaspi_return_t r = f;                 \
+        if (r != GASPI_SUCCESS)                     \
+            DIE_ON_ERROR_OUT(#f, r, std::cout);     \
+    } while(0); 
 
 #define ASSERT_OUT(out, expr, function) { if(!(expr)) DIE_ON_ERROR_OUT(function, "Failed to assert that " << #expr, out) }
 
 #define ASSERT(expr, function) ASSERT_OUT(*info->out, expr, function)
 
-#if defined DEBUG || defined DEBUG_GASPI_UTILS
-#define PRINT_ON_ERROR_OUT(out, msg) { if(out) *out << "Error [" << __FILE__ << ':' << __LINE__ << "] " << msg << std::endl; }
+#if defined DEBUG || defined DEBUG_INTERNAL
+#define PRINT_ON_ERROR(msg) { *info->out << "Error [" << __FILE__ << ':' << __LINE__ << "] " << msg << std::endl; }
+#define PRINT_ON_ERROR_COUT(msg) { std::cout << "Error [" << __FILE__ << ':' << __LINE__ << "] " << msg << std::endl; }
 #else
-#define PRINT_ON_ERROR_OUT(out, msg)
+#define PRINT_ON_ERROR(msg)
+#define PRINT_ON_ERROR_COUT(msg) 
 #endif
 
-#define ERROR_CHECK_OUT(out) {if(r != GASPI_SUCCESS) { PRINT_ON_ERROR_OUT(out, r); return r; }}
-#define ERROR_CHECK ERROR_CHECK_OUT(info->out)
+#define ERROR_CHECK_COUT { if(r != GASPI_SUCCESS) { PRINT_ON_ERROR_COUT(r); return r; }}
+#define ERROR_CHECK {if(r != GASPI_SUCCESS) { PRINT_ON_ERROR(r); return r; }}
 
 #define GASPI_BARRIER gaspi_barrier(GASPI_GROUP_ALL, GASPI_BLOCK)
 
@@ -73,12 +76,12 @@ inline double get_time(){
  *  GASPI_SUCCESS on success, GASPI_ERROR (or other error codes) on error, or GASPI_TIMEOUT on timeout.
  *  GASPI_ERR_MEMALLOC if stream could not be allocated.
  */
-static gaspi_return_t gaspi_setup_output(const char* identifier, gaspi_rank_t id, std::ofstream** stream){
+static gaspi_return_t gaspi_setup_output(const char* identifier, gaspi_rank_t id, std::ostream** stream){
     auto s = std::stringstream();
     s << identifier << '_' << id << ".out"; 
     *stream = new std::ofstream(s.str());
     if(*stream == nullptr){
-        PRINT_ON_ERROR_OUT(&std::cout, "Failed to allocate output stream");
+        PRINT_ON_ERROR_COUT("Failed to allocate output stream");
         return GASPI_ERR_MEMALLOC;
     }
 
@@ -98,13 +101,13 @@ static gaspi_return_t gaspi_free(gaspi_queue_id_t q, int* free) {
     gaspi_number_t queue_size, queue_max;
 
     auto r = gaspi_queue_size_max(&queue_max); 
-    ERROR_CHECK_OUT(&std::cout);
+    ERROR_CHECK_COUT;
 
     r = gaspi_queue_size(q, &queue_size);
-    ERROR_CHECK_OUT(&std::cout);
+    ERROR_CHECK_COUT;
 
     if(queue_size > queue_max){
-        PRINT_ON_ERROR_OUT(&std::cout, "Queue " << q << " overflow");
+        PRINT_ON_ERROR_COUT("Queue " << q << " overflow");
         return GASPI_QUEUE_FULL;
     }
     *free = queue_max - queue_size;
@@ -127,7 +130,7 @@ static gaspi_return_t gaspi_wait_for_queue(gaspi_queue_id_t q, int min, int* fre
         r = gaspi_wait(q, GASPI_BLOCK);
         if(r != GASPI_SUCCESS) break;
     }
-    ERROR_CHECK_OUT(&std::cout);
+    ERROR_CHECK_COUT;
     if(free) *free = f;
     return GASPI_SUCCESS;
 }
@@ -144,14 +147,14 @@ static gaspi_return_t gaspi_wait_for_queue(gaspi_queue_id_t q, int min, int* fre
 template<typename T>
 static gaspi_return_t gaspi_malloc(gaspi_segment_id_t seg, gaspi_size_t size, T* ptr) {
     if(size == 0){
-        PRINT_ON_ERROR_OUT(&std::cout, "Tried to allocate segment of size 0");
+        PRINT_ON_ERROR_COUT("Tried to allocate segment of size 0");
         return GASPI_ERR_INV_SEGSIZE;
     }
     auto r = gaspi_segment_create(seg, size, GASPI_GROUP_ALL, GASPI_BLOCK, GASPI_MEM_UNINITIALIZED);
-    ERROR_CHECK_OUT(&std::cout);
+    ERROR_CHECK_COUT;
 
     gaspi_pointer_t ptr_generic;
-    r = gaspi_segment_ptr(seg, &ptr_generic); ERROR_CHECK_OUT(&std::cout);
+    r = gaspi_segment_ptr(seg, &ptr_generic); ERROR_CHECK_COUT;
 
     *ptr = ptr_generic;
     return GASPI_SUCCESS;
@@ -171,18 +174,18 @@ static gaspi_return_t gaspi_malloc(gaspi_segment_id_t seg, gaspi_size_t size, T*
 static gaspi_return_t gaspi_segment_create_noblock(gaspi_segment_id_t seg, gaspi_size_t size, 
                                                    gaspi_alloc_policy_flags policy = GASPI_MEM_UNINITIALIZED){
     if(size == 0){
-        PRINT_ON_ERROR_OUT(&std::cout, "Tried to create segment of size 0");
+        PRINT_ON_ERROR_COUT("Tried to create segment of size 0");
         return GASPI_ERR_INV_SEGSIZE;
     }
     auto r = gaspi_segment_alloc(seg, size, policy);
-    ERROR_CHECK_OUT(&std::cout);
+    ERROR_CHECK_COUT;
 
     gaspi_rank_t n; 
     r = gaspi_proc_num(&n);
     for(int i = 0; r == GASPI_SUCCESS && i < n; i++) {
         r = gaspi_segment_register(seg, i, GASPI_BLOCK);
     }
-    ERROR_CHECK_OUT(&std::cout);
+    ERROR_CHECK_COUT;
     return GASPI_SUCCESS;
 }
 
@@ -200,10 +203,10 @@ template<typename T>
 static gaspi_return_t gaspi_malloc_noblock(gaspi_segment_id_t seg, gaspi_size_t size, T* ptr,
                                            gaspi_alloc_policy_flags policy = GASPI_MEM_UNINITIALIZED){
     auto r = gaspi_segment_create_noblock(seg, size, policy);
-    ERROR_CHECK_OUT(&std::cout);
+    ERROR_CHECK_COUT;
     gaspi_pointer_t ptr_generic;
     r = gaspi_segment_ptr(seg, &ptr_generic);
-    ERROR_CHECK_OUT(&std::cout);
+    ERROR_CHECK_COUT;
     *ptr = (T)ptr_generic;
     return GASPI_SUCCESS;
 }
@@ -241,7 +244,7 @@ static gaspi_return_t gaspi_malloc_amap(gaspi_segment_id_t seg, gaspi_size_t siz
     while(r == GASPI_ERR_MEMALLOC || r == GASPI_ERROR) {
         size = red(size, data);
         if(size == 0){
-            PRINT_ON_ERROR_OUT(&std::cout, "Tried to allocate segment but size was reduced to 0");
+            PRINT_ON_ERROR_COUT("Tried to allocate segment but size was reduced to 0");
             return GASPI_ERR_MEMALLOC; 
         }
 
@@ -249,14 +252,14 @@ static gaspi_return_t gaspi_malloc_amap(gaspi_segment_id_t seg, gaspi_size_t siz
         if(margin != 0 && r == GASPI_SUCCESS){
             gaspi_number_t max;
             r = gaspi_segment_max(&max);
-            ERROR_CHECK_OUT(&std::cout);
+            ERROR_CHECK_COUT;
             r = gaspi_segment_create_noblock(max - 1, margin);
-            ERROR_CHECK_OUT(&std::cout);
+            ERROR_CHECK_COUT;
             r = gaspi_segment_delete(max - 1);
-            ERROR_CHECK_OUT(&std::cout);
+            ERROR_CHECK_COUT;
         }
     }
-    ERROR_CHECK_OUT(&std::cout);
+    ERROR_CHECK_COUT;
     *allocated = size;
     return ptr ? gaspi_segment_ptr(seg, ptr) : GASPI_SUCCESS;
 }
@@ -288,7 +291,7 @@ static gaspi_return_t get_notification(gaspi_segment_id_t seg, gaspi_notificatio
     case GASPI_SUCCESS:
         return gaspi_notify_reset(seg, notif->first, &(notif->val));
     default:
-        ERROR_CHECK_OUT(&std::cout);
+        ERROR_CHECK_COUT;
     }        
     return GASPI_SUCCESS;  
 }
@@ -309,8 +312,8 @@ static gaspi_return_t get_notification(gaspi_segment_id_t seg, gaspi_notificatio
 static gaspi_return_t send_notification(gaspi_segment_id_t seg, gaspi_rank_t rank, gaspi_notification_id_t id, 
                                         gaspi_notification_t val = 1, gaspi_queue_id_t q = 0, gaspi_timeout_t timeout = GASPI_BLOCK){
     int free;
-    auto r = gaspi_wait_for_queue(q, 1, &free); ERROR_CHECK_OUT(&std::cout);
-    r = gaspi_notify(seg, rank, id, val, q, timeout); ERROR_CHECK_OUT(&std::cout);
+    auto r = gaspi_wait_for_queue(q, 1, &free); ERROR_CHECK_COUT;
+    r = gaspi_notify(seg, rank, id, val, q, timeout); ERROR_CHECK_COUT;
     return GASPI_SUCCESS;
 }
 
@@ -331,12 +334,11 @@ static gaspi_return_t send_notification(gaspi_segment_id_t seg, gaspi_rank_t ran
  */
 static gaspi_return_t read(gaspi_segment_id_t from, gaspi_segment_id_t to, gaspi_offset_t offset_from, gaspi_offset_t offset_to,
                            gaspi_size_t size, gaspi_rank_t rank, gaspi_timeout_t timeout = GASPI_BLOCK, gaspi_queue_id_t q = 0){
-    int free;
-    auto r = gaspi_wait_for_queue(1, q, &free); ERROR_CHECK_OUT(&std::cout);
+    auto r = gaspi_wait_for_queue(1, q); ERROR_CHECK_COUT;
 
-    r = gaspi_read(to, offset_to, rank, from, offset_from, size, q, timeout); ERROR_CHECK_OUT(&std::cout);
+    r = gaspi_read(to, offset_to, rank, from, offset_from, size, q, timeout); ERROR_CHECK_COUT;
 
-    r = gaspi_wait(q, GASPI_BLOCK); ERROR_CHECK_OUT(&std::cout);
+    r = gaspi_wait(q, GASPI_BLOCK); ERROR_CHECK_COUT;
     return GASPI_SUCCESS;
 }
 
@@ -377,10 +379,9 @@ static gaspi_return_t readcopy(gaspi_segment_id_t seg, gaspi_offset_t offset, ga
  */
 static gaspi_return_t write(gaspi_segment_id_t from, gaspi_segment_id_t to, gaspi_offset_t offset_from, gaspi_offset_t offset_to,
                            gaspi_size_t size, gaspi_rank_t rank, gaspi_timeout_t timeout = GASPI_BLOCK, gaspi_queue_id_t q = 0){
-    
-    auto r = gaspi_wait_for_queue(q, 1); ERROR_CHECK_OUT(&std::cout);
+    auto r = gaspi_wait_for_queue(q, 1); ERROR_CHECK_COUT;
 
-    r = gaspi_write(from, offset_from, rank, to, offset_to, size, q, timeout); ERROR_CHECK_OUT(&std::cout);
+    r = gaspi_write(from, offset_from, rank, to, offset_to, size, q, timeout); ERROR_CHECK_COUT;
 
     return GASPI_SUCCESS;
 }
@@ -428,11 +429,19 @@ static gaspi_return_t writenotify(gaspi_segment_id_t from, gaspi_segment_id_t to
                                   gaspi_offset_t offset_to, gaspi_size_t size, gaspi_rank_t rank, 
                                   gaspi_notification_id_t notif_id, gaspi_notification_t notif_val = 1,
                                   gaspi_timeout_t timeout = GASPI_BLOCK, gaspi_queue_id_t q = 0){
-    auto r = gaspi_wait_for_queue(q, 2); ERROR_CHECK_OUT(&std::cout);
+    auto r = gaspi_wait_for_queue(q, 2); ERROR_CHECK_COUT;
 
     r = gaspi_write_notify(from, offset_from, rank, to, offset_to, size, notif_id, notif_val, q, timeout);
-    ERROR_CHECK_OUT(&std::cout);
+    ERROR_CHECK_COUT;
 
+    return GASPI_SUCCESS;
+}
+
+static gaspi_return_t writewait(gaspi_segment_id_t from, gaspi_segment_id_t to, gaspi_offset_t offset_from, gaspi_offset_t offset_to,
+                           gaspi_size_t size, gaspi_rank_t rank, gaspi_timeout_t timeout = GASPI_BLOCK, gaspi_queue_id_t q = 0){
+    auto r = write(from, to, offset_from, offset_to, size, rank, timeout, q);
+    ERROR_CHECK_COUT;
+    r = gaspi_wait(q, GASPI_BLOCK); ERROR_CHECK_COUT;
     return GASPI_SUCCESS;
 }
 

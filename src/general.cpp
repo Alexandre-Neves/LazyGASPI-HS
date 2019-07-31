@@ -11,7 +11,7 @@ gaspi_return_t lazygaspi_get_info(LazyGaspiProcessInfo** info){
 
 gaspi_return_t lazygaspi_clock(){
     LazyGaspiProcessInfo* info;
-    auto r = lazygaspi_get_info(&info); ERROR_CHECK;
+    auto r = lazygaspi_get_info(&info); ERROR_CHECK_COUT;
     info->age++;
     PRINT_DEBUG_INTERNAL("Increased age to " << info->age);
     return GASPI_SUCCESS;
@@ -19,7 +19,7 @@ gaspi_return_t lazygaspi_clock(){
 
 gaspi_return_t lazygaspi_term(){
     LazyGaspiProcessInfo* info;
-    auto r = lazygaspi_get_info(&info); ERROR_CHECK;
+    auto r = lazygaspi_get_info(&info); ERROR_CHECK_COUT;
 
     PRINT_DEBUG_INTERNAL("Started to terminate LazyGASPI for current process. Waiting for outstanding requests in queue 0...");
 
@@ -28,7 +28,7 @@ gaspi_return_t lazygaspi_term(){
 
     PRINT_DEBUG_INTERNAL("Terminating...\n\n");
 
-    if(info->out) delete info->out;
+    if(info->out && info->out != &std::cout) delete info->out;
 
     return gaspi_proc_term(GASPI_BLOCK);
 }

@@ -10,19 +10,27 @@ gaspi_return_t lazygaspi_init(lazygaspi_id_t table_amount, lazygaspi_id_t table_
                               SizeDeterminer det_amount, void* data_amount, SizeDeterminer det_tablesize, void* data_tablesize, 
                               SizeDeterminer det_rowsize, void* data_rowsize){
 
-    PRINT_DEBUG_INTERNAL_OUT(&std::cout, "Initializing LazyGASPI...");
+    PRINT_DEBUG_INTERNAL_COUT("Initializing LazyGASPI...");
 
-    auto r = gaspi_proc_init(GASPI_BLOCK); ERROR_CHECK_OUT(&std::cout);
+    auto r = gaspi_proc_init(GASPI_BLOCK); ERROR_CHECK_COUT;
 
     LazyGaspiProcessInfo* info;
     r = gaspi_malloc_noblock(SEGMENT_ID_INFO, sizeof(LazyGaspiProcessInfo), &info, GASPI_MEM_INITIALIZED); 
-    ERROR_CHECK_OUT(&std::cout);
+    ERROR_CHECK_COUT;
 
-    r = gaspi_proc_num(&(info->n)); ERROR_CHECK_OUT(&std::cout);
-    r = gaspi_proc_rank(&(info->id)); ERROR_CHECK_OUT(&std::cout);
+    r = gaspi_proc_num(&(info->n)); ERROR_CHECK_COUT;
+    r = gaspi_proc_rank(&(info->id)); ERROR_CHECK_COUT;
+
 
     if(info->n == 0) return GASPI_ERR_INV_RANK;
-    if(outputCreator) outputCreator(info);
+    if(outputCreator){
+        outputCreator(info);
+        if(info->out == nullptr){
+            PRINT_ON_ERROR_COUT("Output stream was nullptr (not created).");
+            return GASPI_ERR_NULLPTR;
+        }
+    }
+    else info->out = &std::cout;
     
     PRINT_DEBUG_INTERNAL("Allocated info segment for rank " << info->id << ". Total amount of ranks: " << info->n);
     if(table_amount == 0) { 
@@ -49,6 +57,7 @@ gaspi_return_t lazygaspi_init(lazygaspi_id_t table_amount, lazygaspi_id_t table_
     info->row_size = row_size;
     info->table_amount = table_amount;
     info->table_size = table_size;
+    info->offset_slack = true;
 
     r = allocate_segments(info); ERROR_CHECK;
 

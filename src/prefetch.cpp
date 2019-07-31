@@ -19,7 +19,7 @@ gaspi_return_t lazygaspi_fulfil_prefetches(){
     gaspi_pointer_t rows_table;
     r = gaspi_segment_ptr(SEGMENT_ID_ROWS, &rows_table); ERROR_CHECK;
 
-    const auto entry_size = sizeof(LazyGaspiProcessInfo) + info->row_size + info->n * sizeof(lazygaspi_age_t);
+    const auto entry_size = get_row_entry_size(info);
     const auto row_amount = get_row_amount(info->table_size, info->table_amount, info->n, info->id, info->shardOpts);
 
     for(gaspi_rank_t rank = 0; rank < info->n; rank++)
@@ -41,25 +41,62 @@ gaspi_return_t lazygaspi_fulfil_prefetches(){
     return GASPI_SUCCESS;
 }
 
-gaspi_return_t lazygaspi_prefetch(lazygaspi_id_t row_id, lazygaspi_id_t table_id, lazygaspi_slack_t slack){
+gaspi_return_t lazygaspi_prefetch(lazygaspi_id_t* row_vec, lazygaspi_id_t* table_vec, size_t size, lazygaspi_slack_t slack){
     LazyGaspiProcessInfo* info;
     auto r = lazygaspi_get_info(&info); ERROR_CHECK;
-    if(row_id >= info->table_size || table_id >= info->table_amount) return GASPI_ERR_INV_NUM;
-
-    PRINT_DEBUG_INTERNAL("Prefetching " << row_id << '/' << table_id << " with slack " << slack << " and age " << info->age << '.');
+    if(info->age == 0){
+        PRINT_DEBUG_INTERNAL("Error: clock must be called at least once before prefetch.");
+        return GASPI_ERR_NOINIT;
+    }
 
     gaspi_rank_t rank;
     gaspi_offset_t offset;
-    std::tie(rank, offset) = get_row_location(info, row_id, table_id);
-    if(rank == info->id){
-        PRINT_DEBUG_INTERNAL("Tried to prefetch from own rows table.");
-        return GASPI_SUCCESS;
+    info->communicator = get_min_age(info->age, slack, info->offset_slack);
+    PRINT_DEBUG_INTERNAL(" Writing " << size << " prefetch requests with minimum age " << info->communicator << "...");
+    while(size--){
+        PRINT_DEBUG_INTERNAL(" | : Requesting row " << *row_vec << " from table " << *table_vec << " with minimum age " << 
+                            info->communicator << "...");
+        if(*row_vec >= info->table_size || *table_vec >= info->table_amount){
+            PRINT_DEBUG_INTERNAL(" | : > Error: row/table ID was out of bounds.");
+            return GASPI_ERR_INV_NUM;
+        }
+        std::tie(rank, offset) = get_row_location(info, *row_vec, *table_vec);
+        if(rank == info->id){
+            PRINT_DEBUG_INTERNAL(" | : > Tried to prefetch from own rows table. Ignoring request.");
+            return GASPI_SUCCESS;
+        }
+        auto flag_offset = offset * get_row_entry_size(info) + get_prefetch_req_offset(info);
+
+        r = write(SEGMENT_ID_INFO, SEGMENT_ID_ROWS, offsetof(LazyGaspiProcessInfo, communicator), 
+                 flag_offset,  sizeofmember(LazyGaspiProcessInfo, communicator), rank);
     }
-    auto flag_offset = offset * (sizeof(LazyGaspiRowData) + info->row_size + info->n * sizeof(lazygaspi_age_t)) + 
-                        sizeof(LazyGaspiRowData) + info->row_size + info->id * sizeof(lazygaspi_age_t);
+
+    PRINT_DEBUG_INTERNAL(" | Wrote all prefetch requests. Waiting on queue 0...");
+    return gaspi_wait(0, GASPI_BLOCK);
+}
+
+gaspi_return_t lazygaspi_prefetch_all(lazygaspi_slack_t slack){
+    LazyGaspiProcessInfo* info;
+    auto r = lazygaspi_get_info(&info); ERROR_CHECK_COUT;    
+
     info->communicator = get_min_age(info->age, slack, info->offset_slack);
 
-    PRINT_DEBUG_INTERNAL("Writing prefetch request to server...");
-    return write(SEGMENT_ID_INFO, SEGMENT_ID_ROWS, offsetof(LazyGaspiProcessInfo, communicator), 
-                 flag_offset,  sizeof(lazygaspi_age_t), rank);
+    PRINT_DEBUG_INTERNAL("Writing prefetch requests for all rows of all tables...");
+
+    gaspi_rank_t rank;
+    gaspi_offset_t offset;
+
+    for(lazygaspi_id_t table = 0; table < info->table_amount; table++)
+    for(lazygaspi_id_t row = 0; row < info->table_size; row++){
+        PRINT_DEBUG_INTERNAL(" | Prefetching row " << row << " of table " << table << "...");
+
+        std::tie(rank, offset) = get_row_location(info, row, table);
+        auto flag_offset = offset * get_row_entry_size(info) + get_prefetch_req_offset(info);
+        r = write(SEGMENT_ID_INFO, SEGMENT_ID_ROWS, offsetof(LazyGaspiProcessInfo, communicator), 
+                 flag_offset, sizeofmember(LazyGaspiProcessInfo, communicator), rank);
+        ERROR_CHECK;
+    }
+
+    PRINT_DEBUG_INTERNAL(" | Wrote all prefetch requests.");
+    return gaspi_wait(0, GASPI_BLOCK);
 }

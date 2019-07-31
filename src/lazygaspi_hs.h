@@ -51,10 +51,11 @@ struct LazyGaspiProcessInfo{
     //Field used for communication with other segments.
     lazygaspi_age_t communicator;
     //Stream used to output lazygaspi debug messages. Use nullptr to ignore lazygaspi output.
-    std::ofstream* out;
+    std::ostream* out;
     //True if minimum age for read rows will be the current age minus the slack minus 1.
     //If false, minimum age for read rows will be the current age minus the slack.
-    bool offset_slack = true;
+    //Default is true.
+    bool offset_slack;
 
     ShardingOptions shardOpts;
     CachingOptions cacheOpts;
@@ -90,12 +91,15 @@ typedef void (*OutputCreator)(LazyGaspiProcessInfo* info);
  *  table_size      - The amount of rows in one table, or 0 if size is to be determined by a SizeDeterminer.
  *  row_size        - The size of a row, in bytes, or 0 if size is to be determined by a SizeDeterminer.
  *  shard_options   - Indicates how to shard data among processes. Use block_size = 0 to indicate default sharding (by table).
- *  caching_options - Indicates how to cache data. Use hash = nullptr or size = 0 to indicate default hashing (stores as many rows
+ *  cache_options   - Indicates how to cache data. Use hash = nullptr or size = 0 to indicate default hashing (stores as many rows
  *                    as a table can hold).
- *  output          - Output file stream for debug messages. Use nullptr to ignore.
+ *  outputCreator   - Output file stream for debug messages. Use nullptr to ignore.
  *  det_amount      - Determines the amount of tables to be allocated. Use nullptr to ignore.
+ *  data_amount     - Pointer to the data used by `det_amount`.
  *  det_tablesize   - Determines the size of each table. Use nullptr to ignore.
+ *  data_tablesize  - Pointer to the data used by `det_tablesize`.
  *  det_rowsize     - Determines the size of a row, in bytes. Use nullptr to ignore.
+ *  data_rowsize    - Pointer to the data used by `det_rowsize`.
  * 
  *  Returns:
  *  GASPI_SUCCESS on success, GASPI_ERROR (or another error code) on error, GASPI_TIMEOUT on timeout.
@@ -127,18 +131,40 @@ gaspi_return_t lazygaspi_get_info(LazyGaspiProcessInfo** info);
  */
 gaspi_return_t lazygaspi_fulfil_prefetches();
 
-/** Prefetches a given row.
- *  
- *  Parameters:
- *  row_id   - The row's ID.
- *  table_id - The ID of the row's table.
- *  slack    - The slack allowed for the row that will be prefetched.
+/** Writes prefetch requests on the proper ranks. The two arrays ought to have a size of `size`. 
+ *  For a given index `i`, row_vec[i] from table_vec[i] will be requested for prefetching.
  * 
- *  Returns:
- *  GASPI_SUCCESS on success, GASPI_ERROR (or another error code) on error, GASPI_TIMEOUT on timeout.
- *  GASPI_ERR_INV_NUM is returned if either row_id or table_id are invalid.
+ * Parameters:
+ * row_vec     - An array or row ID's.
+ * table_vec   - An array of table ID's.
+ * size        - The length of both arrays (or all 3, if "preferences" is used).
+ * preferences - An array of preferences, where each index indicates the preference for the corresponding
+ *               pair of table and row ID's. Use nullptr to indicate that all pairs are prefered.
+ * 
+ * Example:
+ * row_vec:   0 1 2 3 4 5 0 2 4 6 7 8 5
+ * table_vec: 0 0 0 0 0 0 1 1 1 1 2 2 3        (Does not need to be in ascending order nor contiguous)
+ * size = 13
+ * 
+ * Returns:
+ * GASPI_SUCCESS on success, GASPI_ERROR (or other error codes) on error, or GASPI_TIMEOUT on timeout.
+ * GASPI_ERR_INV_RANK if calling process is a server.
+ * GASPI_ERR_INV_NUM if either row_id or table_id is not a valid ID.
+ * GASPI_ERR_NOINIT if `lazygaspi_clock`has not been called even once.
  */
-gaspi_return_t lazygaspi_prefetch(lazygaspi_id_t row_id, lazygaspi_id_t table_id, lazygaspi_slack_t slack);
+gaspi_return_t lazygaspi_prefetch(lazygaspi_id_t* row_vec, lazygaspi_id_t* table_vec, size_t size, lazygaspi_slack_t slack);
+
+/** Same as calling lazygaspi_prefetch on all rows of all tables.
+ * 
+ *  Parameters:
+ *  slack - The amount of slack used.
+ * 
+ * Returns:
+ * GASPI_SUCCESS on success, GASPI_ERROR (or other error codes) on error, or GASPI_TIMEOUT on timeout.
+ * GASPI_ERR_INV_RANK if calling process is a server.
+ * GASPI_ERR_NOINIT if `lazygaspi_clock`has not been called even once.
+ */
+gaspi_return_t lazygaspi_prefetch_all(lazygaspi_slack_t slack);
 
 /** Reads a row, whose age is within the given slack.
  * 
@@ -183,10 +209,10 @@ gaspi_return_t lazygaspi_clock();
  */
 gaspi_return_t lazygaspi_term();
 
-#define LAZYGASPI_HS_HASH_ROW [](lazygaspi_id_t row_id, lazygaspi_id_t table_id, LazyGaspiProcessInfo* info){\
+#define LAZYGASPI_HS_HASH_ROW [](lazygaspi_id_t row_id, lazygaspi_id_t table_id, LazyGaspiProcessInfo* info)->gaspi_offset_t{\
                                 return info->table_size * table_id + row_id; }
 
-#define LAZYGASPI_HS_HASH_TABLE [](lazygaspi_id_t row_id, lazygaspi_id_t table_id, LazyGaspiProcessInfo* info){\
+#define LAZYGASPI_HS_HASH_TABLE [](lazygaspi_id_t row_id, lazygaspi_id_t table_id, LazyGaspiProcessInfo* info)->gaspi_offset_t{\
                                     return info->table_amount * row_id + table_id; }
 
 #endif

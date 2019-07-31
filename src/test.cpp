@@ -16,7 +16,6 @@ using namespace Eigen;
 
 //Default values
 #define SLACK 2
-#define ITERATIONS 20
 
 #include <vector>
 
@@ -24,30 +23,34 @@ void print_usage();
 
 void read_sep_comp_sep_write(lazygaspi_id_t proc_table_amount, lazygaspi_id_t table_amount, lazygaspi_id_t table_size, 
                              lazygaspi_age_t iteration, lazygaspi_id_t slack, LazyGaspiRowData* data, ROW* average, 
-                             ROW_DATA_TYPE* rows, lazygaspi_id_t* in_charge, gaspi_size_t row_size, LazyGaspiProcessInfo* info);
+                             ROW_DATA_TYPE* rows, lazygaspi_id_t* in_charge, gaspi_size_t row_size, LazyGaspiProcessInfo* info,
+                             ROW_DATA_TYPE* min_val);
 void read_sep_comp_write(lazygaspi_id_t proc_table_amount, lazygaspi_id_t table_amount, lazygaspi_id_t table_size, 
                              lazygaspi_age_t iteration, lazygaspi_id_t slack, LazyGaspiRowData* data, ROW* average, 
-                             ROW_DATA_TYPE* rows, lazygaspi_id_t* in_charge, gaspi_size_t row_size, LazyGaspiProcessInfo* info);
+                             ROW_DATA_TYPE* rows, lazygaspi_id_t* in_charge, gaspi_size_t row_size, LazyGaspiProcessInfo* info,
+                             ROW_DATA_TYPE* min_val);
 void read_comp_sep_write(lazygaspi_id_t proc_table_amount, lazygaspi_id_t table_amount, lazygaspi_id_t table_size, 
                              lazygaspi_age_t iteration, lazygaspi_id_t slack, LazyGaspiRowData* data, ROW* average,
-                             ROW_DATA_TYPE* rows, lazygaspi_id_t* in_charge, gaspi_size_t row_size, LazyGaspiProcessInfo* info);
+                             ROW_DATA_TYPE* rows, lazygaspi_id_t* in_charge, gaspi_size_t row_size, LazyGaspiProcessInfo* info,
+                             ROW_DATA_TYPE* min_val);
 void read_comp_write(lazygaspi_id_t proc_table_amount, lazygaspi_id_t table_amount, lazygaspi_id_t table_size, 
                              lazygaspi_age_t iteration, lazygaspi_id_t slack, LazyGaspiRowData* data, ROW* average,
-                             ROW_DATA_TYPE* rows, lazygaspi_id_t* in_charge, gaspi_size_t row_size, LazyGaspiProcessInfo* info);
+                             ROW_DATA_TYPE* rows, lazygaspi_id_t* in_charge, gaspi_size_t row_size, LazyGaspiProcessInfo* info,
+                             ROW_DATA_TYPE* min_val);
 
-auto map = [](ROW_DATA_TYPE* rows, gaspi_size_t row_size, int index){
-        return Eigen::Map<ROW, Eigen::Aligned8>(rows + index * row_size, 1, row_size);
+inline Eigen::Map<ROW, Eigen::Aligned8> map(ROW_DATA_TYPE* rows, gaspi_size_t row_size, int index){
+    return Eigen::Map<ROW, Eigen::Aligned8>(rows + index * row_size, 1, row_size);
 };
 
 int main(int argc, char** argv){
     int                 ch;
     lazygaspi_slack_t   slack = SLACK;
-    lazygaspi_age_t     max_iter = ITERATIONS;
     bool                should_prefetch = false;
     bool                separate_comp_write = false;
     bool                separate_comp_read = false;
     lazygaspi_id_t      table_size = 0, table_amount = 0;
     gaspi_size_t        row_size = 0;
+    double              goal = 1 << 10;
 
     option options[3];
     options[0].name = "separate-write";
@@ -62,13 +65,14 @@ int main(int argc, char** argv){
     options[2].flag = nullptr;
     options[2].has_arg =  options[2].val = 0;
 
-    while((ch = getopt_long(argc, argv, "hk:n:r:s:i:p", options, nullptr)) != -1) {
+    while((ch = getopt_long(argc, argv, "hk:n:r:s:g:2:p", options, nullptr)) != -1) {
         switch(ch){
             case 'k': table_size = atol(optarg); break;
             case 'n': table_amount = atol(optarg); break;
             case 'r': row_size = atol(optarg); break;
             case 's': slack = atol(optarg); break;
-            case 'i': max_iter = atol(optarg); break;
+            case 'g': goal = atof(optarg); break;
+            case '2': goal = 1 << atol(optarg); break;
             case 'p': should_prefetch = true; break;
             case 1: separate_comp_write = true; break;
             case 2: separate_comp_read = true; break;
@@ -83,19 +87,22 @@ int main(int argc, char** argv){
         print_usage(); exit(EXIT_FAILURE);
     }
     
-    if(max_iter == 0) max_iter = 1;
-
     #if (defined DEBUG || defined DEBUG_PERF || defined DEBUG_TEST || defined DEBUG_INTERNAL)
-    SUCCESS_OR_DIE_OUT(std::cout, lazygaspi_init(table_amount, table_size, ROW_SIZE, ShardingOptions(0), CachingOptions(nullptr, 0),
-                                    [](LazyGaspiProcessInfo* info){
-                                        SUCCESS_OR_DIE_OUT(std::cout, gaspi_setup_output("lazygaspi_hs", info->id, &(info->out)));
-                                    }));
+    SUCCESS_OR_DIE_COUT(lazygaspi_init(table_amount, table_size, ROW_SIZE, ShardingOptions(0), CachingOptions(nullptr, 0),
+                            [](LazyGaspiProcessInfo* info){
+                                SUCCESS_OR_DIE_COUT(gaspi_setup_output("lazygaspi_hs", info->id, &(info->out)));
+                                timestamp(*info->out);
+                                PRINT_DEBUG("\n\t\t\t//////////////////////\n\t\t\t//\tRANK " << info->id 
+                                            << "      //\n\t\t\t//////////////////////\n");
+                            }
+                        )
+                    );
     #else
-    SUCCESS_OR_DIE_OUT(std::cout, lazygaspi_init(table_amount, table_size, ROW_SIZE));
+    SUCCESS_OR_DIE_COUT(lazygaspi_init(table_amount, table_size, ROW_SIZE));
     #endif
     
     LazyGaspiProcessInfo* info;
-    SUCCESS_OR_DIE_OUT(std::cout, lazygaspi_get_info(&info));
+    SUCCESS_OR_DIE_COUT(lazygaspi_get_info(&info));
 
     ASSERT(info->n != 0, "main");
 
@@ -109,48 +116,45 @@ int main(int argc, char** argv){
         in_charge[i] = table;
 
     ROW average = ROW(row_size);
-    auto data = LazyGaspiRowData();
-    
-    PRINT_TIMESTAMP;
-    PRINT_DEBUG("\n\t\t\t//////////////////////\n\t\t\t//\tRANK " << info->id << "      //\n\t\t\t//////////////////////\n");
+    auto data = LazyGaspiRowData();    
 
     auto beg_cycle = get_time();
-    for(lazygaspi_age_t iteration = 0; iteration < max_iter; iteration++){
-        PRINT_DEBUG_TEST("\nStarted iteration " << iteration << "...");
-
+    ROW_DATA_TYPE min_val = 0;
+    lazygaspi_age_t iteration = 0;
+    for(; min_val < goal; iteration++){
+        PRINT_DEBUG_PERF("\nStarted iteration " << iteration << "... Current value is " << min_val << " and goal is " << goal);
+ 
         //Clock
         SUCCESS_OR_DIE(lazygaspi_clock());
 
         //Prefetch
-        if(should_prefetch)
-        for(lazygaspi_id_t row = 0; row < table_size; row++) 
-        for(lazygaspi_id_t table = 0; table < table_amount; table++)
-            SUCCESS_OR_DIE(lazygaspi_prefetch(row, table, slack));
+        if(should_prefetch) SUCCESS_OR_DIE(lazygaspi_prefetch_all(slack));
         
         //Read, computation and write
         if(separate_comp_read){
             if(separate_comp_write) read_sep_comp_sep_write(proc_table_amount, table_amount, table_size, iteration, slack, &data, 
-                                                            &average, rows, in_charge, row_size, info);
+                                                            &average, rows, in_charge, row_size, info, &min_val);
             else                    read_sep_comp_write(proc_table_amount, table_amount, table_size, iteration, slack, &data, 
-                                                            &average, rows, in_charge, row_size, info); 
+                                                            &average, rows, in_charge, row_size, info, &min_val); 
         } else {
             if(separate_comp_write) read_comp_sep_write(proc_table_amount, table_amount, table_size, iteration, slack, &data, 
-                                                            &average, rows, in_charge, row_size, info);
+                                                            &average, rows, in_charge, row_size, info, &min_val);
             else                    read_comp_write(proc_table_amount, table_amount, table_size, iteration, slack, &data, 
-                                                            &average, rows, in_charge, row_size, info);
+                                                            &average, rows, in_charge, row_size, info, &min_val);
         }
 
         //Fulfil prefetches
-        if(should_prefetch)
-        SUCCESS_OR_DIE(lazygaspi_fulfil_prefetches());
+        if(should_prefetch) SUCCESS_OR_DIE(lazygaspi_fulfil_prefetches());
     }
     auto end_cycle = get_time();
 
-    PRINT_DEBUG_PERF("\nFinished program. Time: " << end_cycle - beg_cycle << " sec.\n");
-
+    PRINT_DEBUG_PERF("\nFinished program in " << (end_cycle - beg_cycle) << " seconds over " << (iteration + 1) << " iterations.\n");
+    #if defined DEBUG || defined DEBUG_PERF || defined DEBUG_TEST
+    std::cout << info->id << ":\t" << (iteration + 1) << "\t| " << (end_cycle - beg_cycle) << std::endl;
+    #endif
     SUCCESS_OR_DIE(GASPI_BARRIER);
 
-    ROW reference_row = ROW(row_size);
+    /*ROW reference_row = ROW(row_size);
     reference_row.setConstant(1 << (max_iter - 1));
     for(lazygaspi_id_t proc_table = 0; proc_table < proc_table_amount; proc_table++){
         for(lazygaspi_id_t row = 0; row < info->table_size; row++){
@@ -161,7 +165,7 @@ int main(int argc, char** argv){
         PRINT_DEBUG_PERF('\n');
     }
     
-    SUCCESS_OR_DIE(GASPI_BARRIER);
+    SUCCESS_OR_DIE(GASPI_BARRIER);*/
 
     SUCCESS_OR_DIE(lazygaspi_term());
 
@@ -172,13 +176,15 @@ int main(int argc, char** argv){
 }
 
 void print_usage(){
-    std::cout << "Usage: gaspi_run <...args...> -k <rows_per_table> -n <amount_of_tables> -r <size_of_row> [-s <slack>] [-i <iter>] [-p]\n\n"
+    std::cout << "Usage: gaspi_run <...args...> -k <rows_per_table> -n <amount_of_tables> -r <size_of_row> [-g <goal>] [-2 <2_goal>] [-s <slack>] [-p]\n\n"
               << "Parameters:\n"
               << "  -k <rows_per_table>:    The amount of rows in one table.\n"
               << "  -n <amount_of_tables>:  The total amount of tables.\n"
               << "  -r <size_of_row>:       The size of a single row, in amount of elements (doubles).\n"
+              << "  [-g <goal>]:            The goal that all rows must reach for the program to terminate. Can be a decimal number.\n"
+              << "  [-2 <2_goal>]:          Same as -g but as a power of 2. For example, -2 3 means the goal will be 2^3 = 8.\n"
+              << "                          Must be a positive integer. If both are called, -2 is prioritized.\n"
               << "  [-s <slack>]:           The amount of slack used. Default is 2.\n"
-              << "  [-i <iter>]:            The maximum number of iterations. Default is 20.\n"
               << "  [-p]:                   Indicates that prefetching should occur. Omit for no prefetching.\n"
               << "  [--separate-write]:     All writes operations from a given iteration occur separately from other operations.\n"
               << "  [--separate-read]:      All read operations from a given iteration occur separately from other operations.\n"
@@ -186,8 +192,9 @@ void print_usage(){
 }
 
 void read_sep_comp_sep_write(lazygaspi_id_t proc_table_amount, lazygaspi_id_t table_amount, lazygaspi_id_t table_size, 
-                             lazygaspi_age_t iteration, lazygaspi_id_t slack, LazyGaspiRowData* data, ROW* average, 
-                             ROW_DATA_TYPE* rows, lazygaspi_id_t* in_charge, gaspi_size_t row_size, LazyGaspiProcessInfo* info){
+                             lazygaspi_age_t iteration, lazygaspi_id_t slack, LazyGaspiRowData* data, ROW* average,
+                             ROW_DATA_TYPE* rows, lazygaspi_id_t* in_charge, gaspi_size_t row_size, LazyGaspiProcessInfo* info,
+                             ROW_DATA_TYPE* min_val){
     //READ
     auto beg_read = get_time();
     ROW row_temp = ROW(row_size);
@@ -203,6 +210,7 @@ void read_sep_comp_sep_write(lazygaspi_id_t proc_table_amount, lazygaspi_id_t ta
     }
     auto end_read = get_time();
     //COMPUTATION
+    *min_val = INFINITY;
     for(lazygaspi_id_t proc_table = 0; proc_table < proc_table_amount; proc_table++)
     for(lazygaspi_id_t row = 0; row < table_size; row++) {
         auto index = proc_table * table_size + row;
@@ -213,11 +221,14 @@ void read_sep_comp_sep_write(lazygaspi_id_t proc_table_amount, lazygaspi_id_t ta
                 *average += row_temp;
             
             *average /= table_amount;
-            map(rows, row_size, index) += *average;                
+            map(rows, row_size, index) += *average;
+            double comp_val = map(rows, row_size, index)(0);
+            if(comp_val < *min_val) *min_val = comp_val;
         }
         else{
             map(rows, row_size, index) = ROW(row_size);
             map(rows, row_size, index).setOnes();
+            *min_val = 1;
         }
     }
     auto end_comp = get_time();
@@ -239,7 +250,8 @@ void read_sep_comp_sep_write(lazygaspi_id_t proc_table_amount, lazygaspi_id_t ta
 
 void read_sep_comp_write(lazygaspi_id_t proc_table_amount, lazygaspi_id_t table_amount, lazygaspi_id_t table_size, 
                         lazygaspi_age_t iteration, lazygaspi_id_t slack, LazyGaspiRowData* data, ROW* average, 
-                        ROW_DATA_TYPE* rows, lazygaspi_id_t* in_charge, gaspi_size_t row_size, LazyGaspiProcessInfo* info){
+                        ROW_DATA_TYPE* rows, lazygaspi_id_t* in_charge, gaspi_size_t row_size, LazyGaspiProcessInfo* info,
+                        ROW_DATA_TYPE* min_val){
     //READ
     auto beg_read = get_time();
     ROW row_temp = ROW(row_size);
@@ -255,7 +267,7 @@ void read_sep_comp_write(lazygaspi_id_t proc_table_amount, lazygaspi_id_t table_
     }
     auto end_read = get_time();
     //COMPUTATION + WRITE
-    auto beg_compwrite = get_time();
+    *min_val = INFINITY;
     for(lazygaspi_id_t proc_table = 0; proc_table < proc_table_amount; proc_table++)
     for(lazygaspi_id_t row = 0; row < table_size; row++) {
         auto index = proc_table * table_size + row;
@@ -268,9 +280,12 @@ void read_sep_comp_write(lazygaspi_id_t proc_table_amount, lazygaspi_id_t table_
             }
             *average /= table_amount;
             map(rows, row_size, index) += *average;
+            double comp_val = map(rows, row_size, index)(0);
+            if(comp_val < *min_val) *min_val = comp_val;
         } else {
             map(rows, row_size, index) = ROW(row_size);
-            map(rows, row_size, index).setOnes(); 
+            map(rows, row_size, index).setOnes();
+            *min_val = 1;
         }
         SUCCESS_OR_DIE(lazygaspi_write(row, in_charge[proc_table], map(rows, row_size, index).data()));
         PRINT_DEBUG_TEST("Wrote row " << row << " from table " << in_charge[proc_table] << " (" << rows[index] << ')');
@@ -278,14 +293,17 @@ void read_sep_comp_write(lazygaspi_id_t proc_table_amount, lazygaspi_id_t table_
     auto end_compwrite = get_time();
     PRINT_DEBUG_PERF("Finished read, computation and write for iteration " << iteration << ". Times:\n\t\tAll: " << 
                     end_compwrite - beg_read << " sec.\n\t\tRead: " << end_read - beg_read << " sec.\n\t\tComputation+Write: " << 
-                    end_compwrite - beg_compwrite << " sec.");
+                    end_compwrite - end_read << " sec.");
 }
 
 void read_comp_sep_write(lazygaspi_id_t proc_table_amount, lazygaspi_id_t table_amount, lazygaspi_id_t table_size, 
                         lazygaspi_age_t iteration, lazygaspi_id_t slack, LazyGaspiRowData* data, ROW* average, 
-                        ROW_DATA_TYPE* rows, lazygaspi_id_t* in_charge, gaspi_size_t row_size, LazyGaspiProcessInfo* info){
+                        ROW_DATA_TYPE* rows, lazygaspi_id_t* in_charge, gaspi_size_t row_size, LazyGaspiProcessInfo* info,
+                        ROW_DATA_TYPE* min_val){
     //READ + COMPUTATION
     ROW  row_temp = ROW(row_size);
+    *min_val = INFINITY;
+
     auto beg_readcomp = get_time();
     for(lazygaspi_id_t proc_table = 0; proc_table < proc_table_amount; proc_table++)
     for(lazygaspi_id_t row = 0; row < table_size; row++) {
@@ -299,11 +317,14 @@ void read_comp_sep_write(lazygaspi_id_t proc_table_amount, lazygaspi_id_t table_
 
                 *average += row_temp;
             }
-            *average /= table_amount;
-            map(rows, row_size, index) += *average;                
+            *average /= table_amount;   
+            map(rows, row_size, index) += *average;
+            double comp_val = map(rows, row_size, index)(0);
+            if(comp_val < *min_val) *min_val = comp_val;        
         } else {    
             map(rows, row_size, index) = ROW(row_size);
             map(rows, row_size, index).setOnes();
+            *min_val = 1;
         }
     }
     auto end_readcomp = get_time();   
@@ -323,9 +344,12 @@ void read_comp_sep_write(lazygaspi_id_t proc_table_amount, lazygaspi_id_t table_
 
 void read_comp_write(lazygaspi_id_t proc_table_amount, lazygaspi_id_t table_amount, lazygaspi_id_t table_size, 
                         lazygaspi_age_t iteration, lazygaspi_id_t slack, LazyGaspiRowData* data, ROW* average, 
-                        ROW_DATA_TYPE* rows, lazygaspi_id_t* in_charge, gaspi_size_t row_size, LazyGaspiProcessInfo* info){ 
+                        ROW_DATA_TYPE* rows, lazygaspi_id_t* in_charge, gaspi_size_t row_size, LazyGaspiProcessInfo* info,
+                        ROW_DATA_TYPE* min_val){ 
     
     ROW row_temp = ROW(row_size);
+    *min_val = INFINITY;
+
     auto beg = get_time();
     for(lazygaspi_id_t proc_table = 0; proc_table < proc_table_amount; proc_table++)
     for(lazygaspi_id_t row = 0; row < table_size; row++) {
@@ -342,10 +366,13 @@ void read_comp_write(lazygaspi_id_t proc_table_amount, lazygaspi_id_t table_amou
             }
             *average /= table_amount;
             map(rows, row_size, index) += *average;
+            double comp_val = map(rows, row_size, index)(0);
+            if(comp_val < *min_val) *min_val = comp_val;
         }
         else {
             map(rows, row_size, index) = ROW(row_size);
             map(rows, row_size, index).setOnes(); 
+            *min_val = 1;
         }
         SUCCESS_OR_DIE(lazygaspi_write(row, in_charge[proc_table], map(rows, row_size, index).data()));
         PRINT_DEBUG_TEST("Wrote row " << row << " from table " << in_charge[proc_table] << " (" << map(rows, row_size, index) << ')');

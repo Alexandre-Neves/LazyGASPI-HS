@@ -2,7 +2,7 @@ rm -f lazygaspi_hs_*.out
 rm -f ~/lazygaspi_hs_*.out
 ssh alexandrepc "rm -f ~/lazygaspi_hs_*.out"
 
-args="-k 6 -n 5 -r 7 -i 10"
+args="-k 6 -n 4 -r 8 -2 12 -s 2"
 if [[ $# > 0 ]]; then
     args=$@
 fi

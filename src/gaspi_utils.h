@@ -150,13 +150,9 @@ static gaspi_return_t gaspi_malloc(gaspi_segment_id_t seg, gaspi_size_t size, T*
         PRINT_ON_ERROR_COUT("Tried to allocate segment of size 0");
         return GASPI_ERR_INV_SEGSIZE;
     }
-    auto r = gaspi_segment_create(seg, size, GASPI_GROUP_ALL, GASPI_BLOCK, GASPI_MEM_UNINITIALIZED);
-    ERROR_CHECK_COUT;
+    auto r = gaspi_segment_create(seg, size, GASPI_GROUP_ALL, GASPI_BLOCK, GASPI_MEM_UNINITIALIZED); ERROR_CHECK_COUT;
+         r = gaspi_segment_ptr(seg, (gaspi_pointer_t*)ptr);                                          ERROR_CHECK_COUT;
 
-    gaspi_pointer_t ptr_generic;
-    r = gaspi_segment_ptr(seg, &ptr_generic); ERROR_CHECK_COUT;
-
-    *ptr = ptr_generic;
     return GASPI_SUCCESS;
 }
 
@@ -202,12 +198,8 @@ static gaspi_return_t gaspi_segment_create_noblock(gaspi_segment_id_t seg, gaspi
 template<typename T>
 static gaspi_return_t gaspi_malloc_noblock(gaspi_segment_id_t seg, gaspi_size_t size, T* ptr,
                                            gaspi_alloc_policy_flags policy = GASPI_MEM_UNINITIALIZED){
-    auto r = gaspi_segment_create_noblock(seg, size, policy);
-    ERROR_CHECK_COUT;
-    gaspi_pointer_t ptr_generic;
-    r = gaspi_segment_ptr(seg, &ptr_generic);
-    ERROR_CHECK_COUT;
-    *ptr = (T)ptr_generic;
+    auto r = gaspi_segment_create_noblock(seg, size, policy); ERROR_CHECK_COUT;
+         r = gaspi_segment_ptr(seg, (gaspi_pointer_t*)ptr);   ERROR_CHECK_COUT;
     return GASPI_SUCCESS;
 }
 /** A SizeReductor function is meant to reduce the size of an attempted allocation.

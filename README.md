@@ -40,9 +40,9 @@ LazyGASPI is the implementation of bounded staleness (https://www.usenix.org/sys
 
 ## How it works
 
-The predetermined amount of tables, amount of rows per table, and amount of bytes per row, determine the total amount of data that must be stored.\
-Depending on how much memory is available per process, a single one might not be enough to store all data (i.e., to be the only server). Therefore, the initialization procedure consists of allocating as much space as possible in rank `i` and, if some data was left unallocated, process `i+1` will receive the leftover, and so on, starting at rank 0.\
-The remaining ranks will be clients, where the user's code will actually run. Because of this, the amount of processes to be considered is different than usual, which raises some caveats (see notes on [the amount of ranks](#A-note-on-the-amount-of-ranks) and on [barriers](#A-note-on-barriers)).
+Data (in the form of rows) is sharded and distributed among all processes (see [ShardingOptions](#so)).\
+Each process acts as a server for the rows that were distributed to it (will send rows that were prefetched to the requesting client).\
+[`lazygaspi_fulfill_prefetches`](#fFulfill) must be called (ideally at the end of the current iteration) in order for prefetching to occur. If the program does not resort to prefetching, there is no need to call [`lazygaspi_fulfill_prefetches`](#fFulfill).\s
 
 <a id="idsMacStrTypFunc"></a>
 ## ID's/Macros, Structures/Typedefs and Functions
@@ -51,23 +51,28 @@ The remaining ranks will be clients, where the user's code will actually run. Be
 | Segment ID | Explanation |
 | ---------- | ----------- |
 | <a id="idInfo"></a>`LAZYGASPI_ID_INFO = 0` | Stores the `LazyGaspiProcessInfo` of the current rank | 
-| <a id="idRowLoc"></a>`LAZYGASPI_ID_ROW_LOCATION_TABLE = 1` | Stores a table of the first row stored in each server |
+| <a id="idRows"></a>`LAZYGASPI_ID_ROWS = 1` | Stores the rows assigned to the current rank |
 | <a id="idCache"></a>`LAZYGASPI_ID_CACHE = 2` | Stores the cache |
 | <a id="idAvail"></a>`LAZYGASPI_ID_AVAIL = 3` | The first available segment ID for allocation (not an actual segment)|
 
 | Macro | Explanation |
 | ----- | ----------- | 
-| <a id="macro_hrow"></a>`LAZYGASPI_SC_HASH_ROW` | A [`CacheHash`](#ch) lambda that hashes entries by row (rows of the same table will (usually) have different positions) |
-| <a id="macro_htable"></a>`LAZYGASPI_SC_HASH_TABLE` | A [`CacheHash`](#ch) lambda that hashes entries by table (rows with the same ID of different tables will (usually) have different positions) | 
-| <a id="macro_barrier"></a>`LAZYGASPI_SC_BARRIER` | See [a note on barriers](#a-note-on-barriers) |
+| <a id="macro_hrow"></a>`LAZYGASPI_HS_HASH_ROW` | A [`CacheHash`](#ch) lambda that hashes entries by row (rows of the same table will (usually) have different positions) |
+| <a id="macro_htable"></a>`LAZYGASPI_HS_HASH_TABLE` | A [`CacheHash`](#ch) lambda that hashes entries by table (rows with the same ID of different tables will (usually) have different positions) | 
 
 <a id="strTyp"></a>
 ### Structures/Typedefs
+<a id="so"></a>
+#### `ShardingOptions (struct)`
+| Type | Member | Explanation |
+| ---- | ------ | ----------- |
+| `lazygaspi_id_t` | `block_size` | How many rows will be assigned to a given process at a time. For example, a value of one means rows are distributed one at a time through all processes, while a value equal to the size of a table means tables are assigned one at a time.
+
 <a id="co"></a>
 #### `CachingOptions (struct)`
 | Type | Member | Explanation |
 | ---- | ------ | ----------- |
-| `CacheHash` | `hash` | Function used to hash an entry to insert into the `LAZYGASPI_ID_CACHE` segment, or `nullptr` to use [`LAZYGASPI_SC_HASH_ROW`](#macro_hrow) instead |
+| `CacheHash` | `hash` | Function used to hash an entry to insert into the [`LAZYGASPI_ID_CACHE`](#idCache) segment, or `nullptr` to use [`LAZYGASPI_HS_HASH_ROW`](#macro_hrow) instead |
 | `gaspi_size_t` | `size` | The amount of rows to be allocated for the cache, or `0` to allocate as many as possible, while at the same time leaving the amount of memory specified in [`lazygaspi_init`](#fInit) free |
 
 <a id="ch"></a>

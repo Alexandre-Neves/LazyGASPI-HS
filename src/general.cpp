@@ -7,7 +7,7 @@ gaspi_return_t lazygaspi_get_info(LazyGaspiProcessInfo** info){
         PRINT_DEBUG_INTERNAL_COUT("Tried to get info segment with nullptr.");
         return GASPI_ERR_NULLPTR;
     }
-    return gaspi_segment_ptr(SEGMENT_ID_INFO, (gaspi_pointer_t*)info);
+    return gaspi_segment_ptr(LAZYGASPI_ID_INFO, (gaspi_pointer_t*)info);
 }
 
 gaspi_return_t lazygaspi_clock(){

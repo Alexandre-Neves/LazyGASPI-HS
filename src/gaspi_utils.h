@@ -319,6 +319,12 @@ static gaspi_return_t readcopy(gaspi_segment_id_t seg, gaspi_offset_t offset, ga
     return read(seg, seg, offset, offset, size, rank, timeout, q);
 }
 
+static inline gaspi_return_t readwait(gaspi_segment_id_t from, gaspi_segment_id_t to, gaspi_offset_t offset_from, gaspi_offset_t offset_to,
+                           gaspi_size_t size, gaspi_rank_t rank, gaspi_timeout_t timeout = GASPI_BLOCK, gaspi_queue_id_t q = 0){
+    auto r = read(from, to, offset_from, offset_to, size, rank, timeout, q); ERROR_CHECK_COUT;
+    return gaspi_wait(q, GASPI_BLOCK);
+}
+
 /**Writes from one segment to another. 
  * Waits for the given queue to free up if it is full.
  * Make sure data is not changed before write request is fulfilled (by using gaspi_wait).

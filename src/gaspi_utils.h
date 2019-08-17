@@ -38,18 +38,19 @@
 
 #define ASSERT(expr, function) ASSERT_OUT(*info->out, expr, function)
 
-#if defined DEBUG || defined DEBUG_INTERNAL
+#if defined DEBUG || defined DEBUG_INTERNAL || defined DEBUG_GASPI_UTILS
 #define PRINT_ON_ERROR(msg) { *info->out << "Error [" << __FILE__ << ':' << __LINE__ << "] " << msg << std::endl; }
 #define PRINT_ON_ERROR_COUT(msg) { std::cout << "Error [" << __FILE__ << ':' << __LINE__ << "] " << msg << std::endl; }
 #else
 #define PRINT_ON_ERROR(msg)
-#define PRINT_ON_ERROR_COUT(msg) 
+#define PRINT_ON_ERROR_COUT(msg)
 #endif
 
 #define ERROR_CHECK_COUT { if(r != GASPI_SUCCESS) { PRINT_ON_ERROR_COUT(r); return r; }}
 #define ERROR_CHECK {if(r != GASPI_SUCCESS) { PRINT_ON_ERROR(r); return r; }}
 
 #define GASPI_BARRIER gaspi_barrier(GASPI_GROUP_ALL, GASPI_BLOCK)
+
 
 /** Prints a timestamp into the stream with the format `[HH:MM:SS]`. */
 static std::ostream& timestamp(std::ostream& stream){
@@ -88,52 +89,6 @@ static gaspi_return_t gaspi_setup_output(const char* identifier, gaspi_rank_t id
     return GASPI_SUCCESS;
 }
 
-/** Returns how many requests can be posted to a given queue.
- * 
- *  Parameters:
- *  q    - The queue.
- *  free - Output parameters for the amount of requests that can be posted.
- * 
- *  Returns:
- *  GASPI_SUCCESS on success, GASPI_ERROR (or other error codes) on error, or GASPI_TIMEOUT on timeout.
- */
-static gaspi_return_t gaspi_free(gaspi_queue_id_t q, int* free) {
-    gaspi_number_t queue_size, queue_max;
-
-    auto r = gaspi_queue_size_max(&queue_max); 
-    ERROR_CHECK_COUT;
-
-    r = gaspi_queue_size(q, &queue_size);
-    ERROR_CHECK_COUT;
-
-    if(queue_size > queue_max){
-        PRINT_ON_ERROR_COUT("Queue " << q << " overflow");
-        return GASPI_QUEUE_FULL;
-    }
-    *free = queue_max - queue_size;
-    return GASPI_SUCCESS;
-}
-/** Waits for a queue to have enough room for new requests.
- * 
- *  Parameters:
- *  q    - The queue to wait for.
- *  min  - The minimum amount of requests that can be posted to the queue after returning.
- *  free - Output parameter for the amount of requests that can actually be posted. Use nullptr to ignore
- *  
- *  Returns:
- *  GASPI_SUCCESS on success, GASPI_ERROR (or other error codes) on error, or GASPI_TIMEOUT on timeout.
- */
-static gaspi_return_t gaspi_wait_for_queue(gaspi_queue_id_t q, int min, int* free = nullptr) {
-    int f;
-    auto r = gaspi_free(q, &f);
-    for (; f < min && r == GASPI_SUCCESS; r = gaspi_free(q, &f)) {
-        r = gaspi_wait(q, GASPI_BLOCK);
-        if(r != GASPI_SUCCESS) break;
-    }
-    ERROR_CHECK_COUT;
-    if(free) *free = f;
-    return GASPI_SUCCESS;
-}
 
 /** Creates a segment and returns a pointer to it.
  * 
@@ -150,9 +105,10 @@ static gaspi_return_t gaspi_malloc(gaspi_segment_id_t seg, gaspi_size_t size, T*
         PRINT_ON_ERROR_COUT("Tried to allocate segment of size 0");
         return GASPI_ERR_INV_SEGSIZE;
     }
-    auto r = gaspi_segment_create(seg, size, GASPI_GROUP_ALL, GASPI_BLOCK, GASPI_MEM_UNINITIALIZED); ERROR_CHECK_COUT;
-         r = gaspi_segment_ptr(seg, (gaspi_pointer_t*)ptr);                                          ERROR_CHECK_COUT;
+    auto r = gaspi_segment_create(seg, size, GASPI_GROUP_ALL, GASPI_BLOCK, GASPI_MEM_UNINITIALIZED);
+    ERROR_CHECK_COUT;
 
+    r = gaspi_segment_ptr(seg, (gaspi_pointer_t*)ptr); ERROR_CHECK_COUT;
     return GASPI_SUCCESS;
 }
 
@@ -166,6 +122,7 @@ static gaspi_return_t gaspi_malloc(gaspi_segment_id_t seg, gaspi_size_t size, T*
  * 
  * Returns:
  * GASPI_SUCCESS on success, GASPI_ERROR (or other error codes) on error, or GASPI_TIMEOUT on timeout.
+ * GASPI_ERR_INV_SEG means the segment has already been allocated.
  */
 static gaspi_return_t gaspi_segment_create_noblock(gaspi_segment_id_t seg, gaspi_size_t size, 
                                                    gaspi_alloc_policy_flags policy = GASPI_MEM_UNINITIALIZED){
@@ -190,7 +147,8 @@ static gaspi_return_t gaspi_segment_create_noblock(gaspi_segment_id_t seg, gaspi
  * Parameters:
  * seg  - The ID of the new segment.
  * size - The size of the new segment.
- * ptr  - Output parameter for the pointer.
+ * ptr  - Output parameter for the pointer. Cannot be nullptr. 
+ *        If pointer is not needed, use `gaspi_segment_create_noblock` instead.
  * 
  * Returns:
  * GASPI_SUCCESS on success, GASPI_ERROR (or another error code) on error, GASPI_TIMEOUT on timeout. 
@@ -198,7 +156,7 @@ static gaspi_return_t gaspi_segment_create_noblock(gaspi_segment_id_t seg, gaspi
 template<typename T>
 static gaspi_return_t gaspi_malloc_noblock(gaspi_segment_id_t seg, gaspi_size_t size, T* ptr,
                                            gaspi_alloc_policy_flags policy = GASPI_MEM_UNINITIALIZED){
-    auto r = gaspi_segment_create_noblock(seg, size, policy); ERROR_CHECK_COUT;
+    auto r = gaspi_segment_create_noblock(seg, size, policy); ERROR_CHECK_COUT; 
          r = gaspi_segment_ptr(seg, (gaspi_pointer_t*)ptr);   ERROR_CHECK_COUT;
     return GASPI_SUCCESS;
 }
@@ -236,7 +194,7 @@ static gaspi_return_t gaspi_malloc_amap(gaspi_segment_id_t seg, gaspi_size_t siz
     while(r == GASPI_ERR_MEMALLOC || r == GASPI_ERROR) {
         size = red(size, data);
         if(size == 0){
-            PRINT_ON_ERROR_COUT("Tried to allocate segment but size was reduced to 0");
+            PRINT_ON_ERROR_COUT("Tried to allocate segment but size was reduced to 0.");
             return GASPI_ERR_MEMALLOC; 
         }
 
@@ -262,7 +220,7 @@ struct Notification{
 };
 
 /**Waits for a notification and resets its value. Returns the ID and value.
- * On timeout, returns 0 for both the ID and the value.
+ * On timeout, outputs 0 for both the ID and the value and returns GASPI_SUCCESS.
  * Parameters:
  * seg   - The ID of the segment that will wait for the notification.
  * begin - The first notification ID to wait for.
@@ -271,7 +229,7 @@ struct Notification{
  * timeout - The timeout to use for the wait.
  * 
  * Returns:
- * GASPI_SUCCESS on success, GASPI_ERROR (or another error code) on error, GASPI_TIMEOUT on timeout.
+ * GASPI_SUCCESS on success or GASPI_ERROR (or another error code) on error.
  */
 static gaspi_return_t get_notification(gaspi_segment_id_t seg, gaspi_notification_id_t begin, gaspi_number_t range, 
                                        Notification* notif, gaspi_timeout_t timeout = GASPI_BLOCK){
@@ -288,7 +246,8 @@ static gaspi_return_t get_notification(gaspi_segment_id_t seg, gaspi_notificatio
     return GASPI_SUCCESS;  
 }
 
-/** Sends a notification. 
+/** Sends a notification. In case of timeout, this must be called again with the same parameters in order to complete the call.
+ *  Procedure will block if queue is full and wait until it is empty.
  * 
  *  Parameters:
  *  seg      - The segment that the notification will be sent to.
@@ -304,8 +263,14 @@ static gaspi_return_t get_notification(gaspi_segment_id_t seg, gaspi_notificatio
 static gaspi_return_t send_notification(gaspi_segment_id_t seg, gaspi_rank_t rank, gaspi_notification_id_t id, 
                                         gaspi_notification_t val = 1, gaspi_queue_id_t q = 0, gaspi_timeout_t timeout = GASPI_BLOCK){
     int free;
-    auto r = gaspi_wait_for_queue(q, 1, &free); ERROR_CHECK_COUT;
-    r = gaspi_notify(seg, rank, id, val, q, timeout); ERROR_CHECK_COUT;
+    gaspi_return_t r;
+    r = gaspi_notify(seg, rank, id, val, q, timeout);
+    
+    while(r == GASPI_QUEUE_FULL) {
+        r = gaspi_wait(q, GASPI_BLOCK); ERROR_CHECK_COUT;
+        r = gaspi_notify(seg, rank, id, val, q, timeout);
+    }
+    ERROR_CHECK_COUT;
     return GASPI_SUCCESS;
 }
 
@@ -326,11 +291,13 @@ static gaspi_return_t send_notification(gaspi_segment_id_t seg, gaspi_rank_t ran
  */
 static gaspi_return_t read(gaspi_segment_id_t from, gaspi_segment_id_t to, gaspi_offset_t offset_from, gaspi_offset_t offset_to,
                            gaspi_size_t size, gaspi_rank_t rank, gaspi_timeout_t timeout = GASPI_BLOCK, gaspi_queue_id_t q = 0){
-    auto r = gaspi_wait_for_queue(1, q); ERROR_CHECK_COUT;
 
-    r = gaspi_read(to, offset_to, rank, from, offset_from, size, q, timeout); ERROR_CHECK_COUT;
-
-    r = gaspi_wait(q, GASPI_BLOCK); ERROR_CHECK_COUT;
+    auto r = gaspi_read(to, offset_to, rank, from, offset_from, size, q, timeout);
+    while(r == GASPI_QUEUE_FULL){
+        r = gaspi_wait(q, GASPI_BLOCK); ERROR_CHECK_COUT;
+        r = gaspi_read(to, offset_to, rank, from, offset_from, size, q, timeout);
+    }
+    ERROR_CHECK_COUT;
     return GASPI_SUCCESS;
 }
 
@@ -371,11 +338,22 @@ static gaspi_return_t readcopy(gaspi_segment_id_t seg, gaspi_offset_t offset, ga
  */
 static gaspi_return_t write(gaspi_segment_id_t from, gaspi_segment_id_t to, gaspi_offset_t offset_from, gaspi_offset_t offset_to,
                            gaspi_size_t size, gaspi_rank_t rank, gaspi_timeout_t timeout = GASPI_BLOCK, gaspi_queue_id_t q = 0){
-    auto r = gaspi_wait_for_queue(q, 1); ERROR_CHECK_COUT;
-
-    r = gaspi_write(from, offset_from, rank, to, offset_to, size, q, timeout); ERROR_CHECK_COUT;
-
+    auto r = gaspi_write(from, offset_from, rank, to, offset_to, size, q, timeout);
+    while(r == GASPI_QUEUE_FULL){
+        r = gaspi_wait(q, GASPI_BLOCK); ERROR_CHECK_COUT;
+        r = gaspi_write(from, offset_from, rank, to, offset_to, size, q, timeout);
+    }
+    ERROR_CHECK_COUT;
     return GASPI_SUCCESS;
+}
+
+/** See write(8) for documentation. This one simply waits for the write request to be fulfilled.
+ * Data can therefore be changed after this function returns. */
+static gaspi_return_t writewait(gaspi_segment_id_t from, gaspi_segment_id_t to, gaspi_offset_t offset_from, gaspi_offset_t offset_to,
+                           gaspi_size_t size, gaspi_rank_t rank, gaspi_timeout_t timeout = GASPI_BLOCK, gaspi_queue_id_t q = 0){
+    auto r = write(from, to, offset_from, offset_to, size, rank, timeout, q);
+    ERROR_CHECK_COUT;
+    return gaspi_wait(q, GASPI_BLOCK);
 }
 
 /**Writes from one segment to another of the same ID, at the same offset. 
@@ -421,19 +399,12 @@ static gaspi_return_t writenotify(gaspi_segment_id_t from, gaspi_segment_id_t to
                                   gaspi_offset_t offset_to, gaspi_size_t size, gaspi_rank_t rank, 
                                   gaspi_notification_id_t notif_id, gaspi_notification_t notif_val = 1,
                                   gaspi_timeout_t timeout = GASPI_BLOCK, gaspi_queue_id_t q = 0){
-    auto r = gaspi_wait_for_queue(q, 2); ERROR_CHECK_COUT;
-
-    r = gaspi_write_notify(from, offset_from, rank, to, offset_to, size, notif_id, notif_val, q, timeout);
+    auto r = gaspi_write_notify(from, offset_from, rank, to, offset_to, size, notif_id, notif_val, q, timeout);
+    while(r == GASPI_QUEUE_FULL){
+        r = gaspi_wait(q, GASPI_BLOCK); ERROR_CHECK_COUT;
+        r = gaspi_write_notify(from, offset_from, rank, to, offset_to, size, notif_id, notif_val, q, timeout);
+    }
     ERROR_CHECK_COUT;
-
-    return GASPI_SUCCESS;
-}
-
-static gaspi_return_t writewait(gaspi_segment_id_t from, gaspi_segment_id_t to, gaspi_offset_t offset_from, gaspi_offset_t offset_to,
-                           gaspi_size_t size, gaspi_rank_t rank, gaspi_timeout_t timeout = GASPI_BLOCK, gaspi_queue_id_t q = 0){
-    auto r = write(from, to, offset_from, offset_to, size, rank, timeout, q);
-    ERROR_CHECK_COUT;
-    r = gaspi_wait(q, GASPI_BLOCK); ERROR_CHECK_COUT;
     return GASPI_SUCCESS;
 }
 

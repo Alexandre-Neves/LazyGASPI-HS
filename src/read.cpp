@@ -47,7 +47,7 @@ gaspi_return_t lazygaspi_read(lazygaspi_id_t row_id, lazygaspi_id_t table_id, la
     #endif
 
     while(rowData->age < min || rowData->row_id != row_id || rowData->table_id != table_id){ 
-        r = read(LAZYGASPI_ID_ROWS, LAZYGASPI_ID_CACHE, offset, offset_cache, sizeof(LazyGaspiRowData) + info->row_size, rank);
+        r = readwait(LAZYGASPI_ID_ROWS, LAZYGASPI_ID_CACHE, offset, offset_cache, sizeof(LazyGaspiRowData) + info->row_size, rank);
         ERROR_CHECK;
         #if defined(DEBUG) || defined(DEBUG_INTERNAL)
         if(rowData->row_id != row_id || rowData->table_id != table_id) attempt_counter++;

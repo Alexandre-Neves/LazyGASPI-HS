@@ -8,9 +8,10 @@
 #include <GASPI.h>
 #include <fstream>
 
-#define SEGMENT_ID_INFO 0 
-#define SEGMENT_ID_ROWS 1
-#define SEGMENT_ID_CACHE 2
+#define LAZYGASPI_ID_INFO 0 
+#define LAZYGASPI_ID_ROWS 1
+#define LAZYGASPI_ID_CACHE 2
+#define LAZYGASPI_ID_AVAIL 3
 
 typedef unsigned long lazygaspi_id_t;
 typedef unsigned long lazygaspi_age_t;
@@ -123,13 +124,13 @@ gaspi_return_t lazygaspi_init(lazygaspi_id_t table_amount, lazygaspi_id_t table_
  */
 gaspi_return_t lazygaspi_get_info(LazyGaspiProcessInfo** info);
 
-/** Fulfils prefetch requests from other ranks. 
+/** Fulfills prefetch requests from other ranks. 
  *  Must be called by all processes at the end of each iteration for prefetching to work properly.
  *  
  *  Returns:
  *  GASPI_SUCCESS on success, GASPI_ERROR (or another error code) on error, GASPI_TIMEOUT on timeout. 
  */
-gaspi_return_t lazygaspi_fulfil_prefetches();
+gaspi_return_t lazygaspi_fulfill_prefetches();
 
 /** Writes prefetch requests on the proper ranks. The two arrays ought to have a size of `size`. 
  *  For a given index `i`, row_vec[i] from table_vec[i] will be requested for prefetching.

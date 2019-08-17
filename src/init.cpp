@@ -34,7 +34,7 @@ gaspi_return_t lazygaspi_init(lazygaspi_id_t table_amount, lazygaspi_id_t table_
     auto r = gaspi_proc_init(GASPI_BLOCK); ERROR_CHECK_COUT;
 
     LazyGaspiProcessInfo* info;
-    r = gaspi_malloc_noblock(SEGMENT_ID_INFO, sizeof(LazyGaspiProcessInfo), &info, GASPI_MEM_INITIALIZED); 
+    r = gaspi_malloc_noblock(LAZYGASPI_ID_INFO, sizeof(LazyGaspiProcessInfo), &info, GASPI_MEM_INITIALIZED); 
     ERROR_CHECK_COUT;
 
     r = gaspi_proc_num(&(info->n)); ERROR_CHECK_COUT;
@@ -105,12 +105,12 @@ gaspi_return_t allocate_segments(LazyGaspiProcessInfo* info){
     //An entry for this segment is a metadata tag, the row itself, and the pending prefetch requests (n slots).
     gaspi_return_t r;
     if(row_amount){
-        r = gaspi_segment_create_noblock(SEGMENT_ID_ROWS, rows_table_size, GASPI_MEM_INITIALIZED);
+        r = gaspi_segment_create_noblock(LAZYGASPI_ID_ROWS, rows_table_size, GASPI_MEM_INITIALIZED);
         ERROR_CHECK;
     }
 
     //An entry for this segment is a metadata tag and the row itself.
-    r = gaspi_segment_create_noblock(SEGMENT_ID_CACHE, cache_size, GASPI_MEM_INITIALIZED);
+    r = gaspi_segment_create_noblock(LAZYGASPI_ID_CACHE, cache_size, GASPI_MEM_INITIALIZED);
     ERROR_CHECK;
 
     return GASPI_BARRIER;

@@ -143,8 +143,8 @@ int main(int argc, char** argv){
                                                             &average, rows, in_charge, row_size, info, &min_val);
         }
 
-        //Fulfil prefetches
-        if(should_prefetch) SUCCESS_OR_DIE(lazygaspi_fulfil_prefetches());
+        //Fulfill prefetches
+        if(should_prefetch) SUCCESS_OR_DIE(lazygaspi_fulfill_prefetches());
     }
     auto end_cycle = get_time();
 

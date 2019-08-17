@@ -31,13 +31,13 @@ gaspi_return_t lazygaspi_write(lazygaspi_id_t row_id, lazygaspi_id_t table_id, v
 
     //Write to cache.
     gaspi_pointer_t cache;
-    r = gaspi_segment_ptr(SEGMENT_ID_CACHE, &cache); ERROR_CHECK;
+    r = gaspi_segment_ptr(LAZYGASPI_ID_CACHE, &cache); ERROR_CHECK;
     auto data = LazyGaspiRowData(info->age, row_id, table_id);
     memcpy((char*)cache + offset_cache, &data, sizeof(LazyGaspiRowData));
     memcpy((char*)cache + offset_cache + sizeof(LazyGaspiRowData), row, info->row_size);
 
     //Write to rows segment of proper rank.
-    r = writenotify(SEGMENT_ID_CACHE, SEGMENT_ID_ROWS, offset_cache, offset_rows, 
+    r = writenotify(LAZYGASPI_ID_CACHE, LAZYGASPI_ID_ROWS, offset_cache, offset_rows, 
                 sizeof(LazyGaspiRowData) + info->row_size, rank, NOTIF_ID_ROW_WRITTEN);
     ERROR_CHECK;
     return gaspi_wait(0, GASPI_BLOCK);  //Make sure write request is fulfilled before cache is used again for another write.

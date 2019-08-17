@@ -30,6 +30,12 @@ gaspi_return_t lazygaspi_term(){
     PRINT_DEBUG_INTERNAL("Terminating...\n\n");
 
     if(info->out && info->out != &std::cout) delete info->out;
-
+    
+    #ifdef WITH_MPI
+    r = gaspi_proc_term(GASPI_BLOCK); ERROR_CHECK_COUT;
+    auto ret = MPI_Finalize(); ERROR_MPI_CHECK_COUT("Failed to finalize.");
+    return GASPI_SUCCESS;
+    #else
     return gaspi_proc_term(GASPI_BLOCK);
+    #endif
 }

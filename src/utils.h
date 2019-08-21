@@ -13,12 +13,6 @@
 #include "typedefs.h"
 #include "lazygaspi_hs.h"
 
-#ifdef LOCKED_OPERATIONS
-#define LOCK_MASK_WRITE (((gaspi_atomic_value_t)1) << (sizeof(gaspi_atomic_value_t) * 8 - 1))
-#define LOCK_MASK_READ (LOCK_MASK_WRITE - 1)
-#define LOCK_FREE_TO_WRITE_MASK ((gaspi_atomic_value_t)-1)
-#define LOCK_FREE_TO_READ_MASK LOCK_MASK_WRITE
-#endif
 
 #define NOTIF_ID_ROW_WRITTEN 0
 
@@ -134,4 +128,21 @@ static inline lazygaspi_age_t get_prefetch(const LazyGaspiProcessInfo* info, con
     }
     return 0;
 }
+
+
+#ifdef LOCKED_OPERATIONS
+#define LOCK_MASK_WRITE (((gaspi_atomic_value_t)1) << (sizeof(gaspi_atomic_value_t) * 8 - 1))
+#define LOCK_MASK_READ (LOCK_MASK_WRITE - 1)
+#define LOCK_FREE_TO_WRITE_MASK ((gaspi_atomic_value_t)-1)
+#define LOCK_FREE_TO_READ_MASK LOCK_MASK_WRITE
+void lock_row_for_read(const LazyGaspiProcessInfo* info, const gaspi_segment_id_t seg, const gaspi_offset_t offset, 
+                       const gaspi_rank_t rank);
+void unlock_row_from_read(const LazyGaspiProcessInfo* info, const gaspi_segment_id_t seg, const gaspi_offset_t offset,
+                          const gaspi_rank_t rank, const gaspi_queue_id_t q = 0);
+void lock_row_for_write(const LazyGaspiProcessInfo* info, const gaspi_segment_id_t seg, const gaspi_offset_t offset, 
+                        const gaspi_rank_t rank);
+void unlock_row_from_write(LazyGaspiProcessInfo* info, const gaspi_segment_id_t seg, const gaspi_offset_t offset,
+                           const gaspi_rank_t rank, const gaspi_queue_id_t q = 0);
+#endif
+
 #endif

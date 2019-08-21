@@ -4,10 +4,9 @@
 
 #include <cstring>
 
-#define LOCK_MASK_WRITE (((gaspi_atomic_value_t)1) << (sizeof(gaspi_atomic_value_t) * 8 - 1))
-#define LOCK_MASK_READ (LOCK_MASK_WRITE - 1)
+#ifdef LOCKED_OPERATIONS
 //TODO: remove goto and replace with adequate loop
-gaspi_return_t lock(const LazyGaspiProcessInfo* info, const gaspi_segment_id_t seg, const gaspi_offset_t offset, 
+gaspi_return_t lock_row_for_read(const LazyGaspiProcessInfo* info, const gaspi_segment_id_t seg, const gaspi_offset_t offset, 
                     const gaspi_rank_t rank){
     gaspi_atomic_value_t oldval;
     gaspi_return_t r;
@@ -29,13 +28,15 @@ gaspi_return_t lock(const LazyGaspiProcessInfo* info, const gaspi_segment_id_t s
     return GASPI_SUCCESS;
 }
 
-gaspi_return_t unlock(LazyGaspiProcessInfo* info, const gaspi_segment_id_t seg, const gaspi_offset_t offset,
+gaspi_return_t unlock_row_from_read(const LazyGaspiProcessInfo* info, const gaspi_segment_id_t seg, const gaspi_offset_t offset,
                       const gaspi_rank_t rank, const gaspi_queue_id_t q = 0){
     gaspi_atomic_value_t val;
     auto r = gaspi_atomic_fetch_add(seg, offset, rank, -1, &val, GASPI_BLOCK); 
     if(r != GASPI_SUCCESS) PRINT_ON_ERROR(r);
     return r;
 }
+
+#endif
 
 gaspi_return_t lazygaspi_read(lazygaspi_id_t row_id, lazygaspi_id_t table_id, lazygaspi_slack_t slack, void* row,
                               LazyGaspiRowData* data){
@@ -80,8 +81,25 @@ gaspi_return_t lazygaspi_read(lazygaspi_id_t row_id, lazygaspi_id_t table_id, la
     #endif
 
     while(rowData->age < min || rowData->row_id != row_id || rowData->table_id != table_id){ 
+        #ifdef LOCKED_OPERATIONS
+        //Lock row in cache. Prefetch responders will have to wait until this is done...
+        r = lock_row_for_write(info, LAZYGASPI_ID_CACHE, offset_cache + offsetof(LazyGaspiRowData, lock), info->id);
+        ERROR_CHECK;
+        //Lock row in server for reading. Any new updates to that row will have to wait until read is done...
+        r = lock_row_for_read(info, LAZYGASPI_ID_ROWS, offset + offsetof(LazyGaspiRowData, lock), rank);
+        ERROR_CHECK;
+        //This read will not wait for queue after posting request, since that will be done by write unlock.
+        r = read(LAZYGASPI_ID_ROWS, LAZYGASPI_ID_CACHE, offset, offset_cache, sizeof(LazyGaspiRowData) + info->row_size, rank);
+        ERROR_CHECK;
+        r = unlock_row_from_write(info, LAZYGASPI_ID_CACHE, offset_cache + offsetof(LazyGaspiRowData, lock), info->id);
+        ERROR_CHECK;
+        r = lock_row_for_read(info, LAZYGASPI_ID_ROWS, offset + offsetof(LazyGaspiRowData, lock), rank);
+        ERROR_CHECK;
+        #else
         r = readwait(LAZYGASPI_ID_ROWS, LAZYGASPI_ID_CACHE, offset, offset_cache, sizeof(LazyGaspiRowData) + info->row_size, rank);
         ERROR_CHECK;
+        #endif
+
         #if defined(DEBUG) || defined(DEBUG_INTERNAL)
         if(rowData->row_id != row_id || rowData->table_id != table_id) attempt_counter++;
         if(attempt_counter && attempt_counter % 1000 == 0) { 
@@ -95,8 +113,16 @@ gaspi_return_t lazygaspi_read(lazygaspi_id_t row_id, lazygaspi_id_t table_id, la
 
     PRINT_DEBUG_INTERNAL(" | : Read fresh row. Age was " << rowData->age);
 
+    #ifdef LOCKED_OPERATIONS
+    lock_row_for_read(info, LAZYGASPI_ID_CACHE, offset_cache + offsetof(LazyGaspiRowData, lock), info->id);
+    #endif
+
     memcpy(row, (void*)((char*)rowData + sizeof(LazyGaspiRowData)), info->row_size);
     if(data) *data = *rowData;
+
+    #ifdef LOCKED_OPERATIONS
+    unlock_row_from_read(info, LAZYGASPI_ID_CACHE, offset_cache + offsetof(LazyGaspiRowData, lock), info->id);
+    #endif
 
     return GASPI_SUCCESS;
 }

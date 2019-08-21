@@ -63,12 +63,19 @@ struct LazyGaspiProcessInfo{
 };
 
 struct LazyGaspiRowData{
+    #ifdef LOCKED_OPERATIONS
+    gaspi_atomic_value_t lock; 
+    #endif
     lazygaspi_age_t age;
     lazygaspi_id_t row_id;
     lazygaspi_id_t table_id;
 
     LazyGaspiRowData(lazygaspi_age_t age, lazygaspi_id_t row_id, lazygaspi_id_t table_id) : 
-                     age(age), row_id(row_id), table_id(table_id) {};
+                     age(age), row_id(row_id), table_id(table_id)
+    #ifdef LOCKED_OPERATIONS
+    , lock(0)
+    #endif                 
+    {};
     LazyGaspiRowData() : LazyGaspiRowData(0, 0, 0) {}
 };
 

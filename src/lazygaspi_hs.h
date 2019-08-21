@@ -14,7 +14,7 @@
 #define LAZYGASPI_ID_AVAIL 3
 
 typedef unsigned long lazygaspi_id_t;
-typedef unsigned long lazygaspi_age_t;
+typedef gaspi_atomic_value_t lazygaspi_age_t;
 typedef unsigned long lazygaspi_slack_t;
 
 struct LazyGaspiProcessInfo;

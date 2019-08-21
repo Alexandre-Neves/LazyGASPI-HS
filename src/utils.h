@@ -13,6 +13,13 @@
 #include "typedefs.h"
 #include "lazygaspi_hs.h"
 
+#ifdef LOCKED_OPERATIONS
+#define LOCK_MASK_WRITE (((gaspi_atomic_value_t)1) << (sizeof(gaspi_atomic_value_t) * 8 - 1))
+#define LOCK_MASK_READ (LOCK_MASK_WRITE - 1)
+#define LOCK_FREE_TO_WRITE_MASK ((gaspi_atomic_value_t)-1)
+#define LOCK_FREE_TO_READ_MASK LOCK_MASK_WRITE
+#endif
+
 #define NOTIF_ID_ROW_WRITTEN 0
 
 #if (defined (DEBUG) || defined (DEBUG_INTERNAL))

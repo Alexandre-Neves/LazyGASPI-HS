@@ -3,6 +3,30 @@
 #include "gaspi_utils.h"
 #include <cstring>
 
+
+gaspi_return_t lock(const LazyGaspiProcessInfo* info, const gaspi_segment_id_t seg, const gaspi_offset_t offset, 
+                    const gaspi_rank_t rank){
+    gaspi_atomic_value_t oldval;
+    gaspi_return_t r;
+    do{
+        r = gaspi_atomic_compare_swap(seg, offset, rank, 0, LOCK_MASK_WRITE, &oldval, GASPI_BLOCK);
+        ERROR_CHECK;
+    } while(oldval != 0); //While write operations are still locked (Row is being read or row is being written by another proc)
+}
+
+gaspi_return_t unlock(LazyGaspiProcessInfo* info, const gaspi_segment_id_t seg, const gaspi_offset_t offset,
+                      const gaspi_rank_t rank, const gaspi_queue_id_t q = 0){
+    auto r = gaspi_wait(q, GASPI_BLOCK); ERROR_CHECK;
+    
+    info->communicator = 0;
+    r = gaspi_write(LAZYGASPI_ID_INFO, offsetof(LazyGaspiProcessInfo, communicator), rank, seg, offset, 
+                    sizeofmember(LazyGaspiProcessInfo, communicator), q, GASPI_BLOCK);
+    ERROR_CHECK;
+    r = gaspi_wait(q, GASPI_BLOCK); ERROR_CHECK;
+    return GASPI_SUCCESS;
+}
+
+
 gaspi_return_t lazygaspi_write(lazygaspi_id_t row_id, lazygaspi_id_t table_id, void* row){
 
     LazyGaspiProcessInfo* info;

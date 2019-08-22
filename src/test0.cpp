@@ -149,23 +149,7 @@ int main(int argc, char** argv){
     auto end_cycle = get_time();
 
     PRINT_DEBUG_PERF("\nFinished program in " << (end_cycle - beg_cycle) << " seconds over " << (iteration + 1) << " iterations.\n");
-    #if defined DEBUG || defined DEBUG_PERF || defined DEBUG_TEST
-    std::cout << info->id << ":\t" << (iteration + 1) << "\t| " << (end_cycle - beg_cycle) << std::endl;
-    #endif
     SUCCESS_OR_DIE(GASPI_BARRIER);
-
-    /*ROW reference_row = ROW(row_size);
-    reference_row.setConstant(1 << (max_iter - 1));
-    for(lazygaspi_id_t proc_table = 0; proc_table < proc_table_amount; proc_table++){
-        for(lazygaspi_id_t row = 0; row < info->table_size; row++){
-            lazygaspi_read(row, in_charge[proc_table], 0, average.data());
-            auto val = (reference_row - average).sum() / row_size; 
-            PRINT_DEBUG_PERF("Offset from reference was on average " << val << " for " << average);
-        }
-        PRINT_DEBUG_PERF('\n');
-    }
-    
-    SUCCESS_OR_DIE(GASPI_BARRIER);*/
 
     SUCCESS_OR_DIE(lazygaspi_term());
 

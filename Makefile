@@ -1,6 +1,11 @@
 MAKE_INC=make.inc
 include $(MAKE_INC)
 
+HEADERNAMES = lazygaspi_hs.h
+DEPS = include/lazygaspi_hs.h src/gaspi_utils.h src/utils.h
+OBJS = bin/init.o bin/general.o bin/read.o bin/write.o bin/prefetch.o
+OUTPUT_FILE_FORMAT=lazygaspi_hs_*.out
+
 ifeq "$(LIB_STATIC)" "1"
   LIBNAME_EXT=lib$(LIBNAME).a
 else
@@ -18,10 +23,9 @@ endif
 
 MACHINEFILE=machinefile
 
-HEADERNAMES = lazygaspi_hs.h
-OBJS = bin/init.o bin/general.o bin/read.o bin/write.o bin/prefetch.o
-DEPS = include/lazygaspi_hs.h src/gaspi_utils.h src/utils.h
 TESTS = test0
+
+DEFAULT_test0 = -n 4 -k 5 -r 10 -2 12
 
 DIR_TESTS=$(PREFIX)/tests
 DIR_LIB=$(PREFIX)/lib
@@ -33,7 +37,6 @@ TESTSCRIPT=$(DIR_TESTS)/run_test.sh
 TESTSCRIPTALL=$(DIR_TESTS)/run_all.sh
 SCRIPTS = $(TESTSCRIPT) $(TESTSCRIPTALL)
 
-OUTPUT_FILE_FORMAT=lazygaspi_hs_*.out
 
 .PHONY: clean uninstall remove_all install tests $(TESTS) test_script move all
 
@@ -86,7 +89,9 @@ $(MACHINEFILE).\"; fi" >> $(TESTSCRIPT)
 		fi;\
 	else echo "gaspi_run -m $(MACHINEFILE) \$$1 \$${@:2}" >> $(TESTSCRIPT); fi
 	@echo "cd \$$(dirname \$$0)" >> $(TESTSCRIPTALL)
-	@$(foreach t, $(TESTS), echo "./run_test.sh $(t) \$$@" >> $(TESTSCRIPTALL);)
+	@$(foreach t, $(TESTS),\
+		echo "if [ \$$# = 0 ]; then ARGS=\"$(DEFAULT_$(t))\"; else ARGS=\$$@; fi" >> $(TESTSCRIPTALL);\
+	 	echo "./run_test.sh $(t) \$$ARGS" >> $(TESTSCRIPTALL);)
 	@chmod a+x $(TESTSCRIPT) $(TESTSCRIPTALL)
 
 
@@ -120,7 +125,6 @@ uninstall:
 bin/%.o : src/%.cpp $(DEPS)
 	@mkdir -p bin
 	@$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@ $(LDFLAGS) $(LDLIBS)
-
 
 #						MOVE SHARED LIB TARGET
 

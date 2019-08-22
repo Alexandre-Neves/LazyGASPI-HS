@@ -1,3 +1,5 @@
+LIBNAME="LazyGASPI_HS"
+
 allopts="hp:-:m:"
 
 MAKE_INC=make.inc
@@ -49,7 +51,6 @@ GASPI_LIBNAME="GPI2"
 EIGEN="/usr/local/include/eigen3"
 LIB_PATH="$PREFIX/lib"
 INCL_PATH="$PREFIX/include"
-LIBNAME="LazyGASPI_HS"
 WITH_LOCK=0
 
 while getopts $allopts opt; do

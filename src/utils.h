@@ -10,9 +10,14 @@
 #include <thread>
 #include <utility>
 
-#include "typedefs.h"
 #include "lazygaspi_hs.h"
 
+typedef unsigned int uint;
+typedef unsigned char byte;
+typedef unsigned long ulong;
+
+#define subsizeof(STRUCT, MEMBER_BEGIN, MEMBER_END) (offsetof(STRUCT, MEMBER_END) + sizeof(decltype(std::declval<STRUCT>().MEMBER_END)) - offsetof(STRUCT, MEMBER_BEGIN))
+#define sizeofmember(STRUCT, MEMBER) sizeof((( STRUCT *)0)-> MEMBER)
 
 #define NOTIF_ID_ROW_WRITTEN 0
 
@@ -49,6 +54,34 @@
 #define ERROR_MPI_CHECK_COUT(msg) {if(ret != MPI_SUCCESS){ std::cout << "Error " << ret << " at [" << __FILE__ << ':' << __LINE__ << "] \
                               from MPI: " << msg << std::endl; return GASPI_ERROR; }}
 #endif
+
+#ifdef LOCKED_OPERATIONS
+    #define LOCK_MASK_WRITE (((gaspi_atomic_value_t)1) << (sizeof(gaspi_atomic_value_t) * 8 - 1))
+
+    struct Lock{ gaspi_atomic_value_t val; };
+
+    gaspi_return_t lock_row_for_read(const LazyGaspiProcessInfo* info, const gaspi_segment_id_t seg, const gaspi_offset_t offset, 
+                       const gaspi_rank_t rank);
+    gaspi_return_t unlock_row_from_read(const LazyGaspiProcessInfo* info, const gaspi_segment_id_t seg, const gaspi_offset_t offset,
+                          const gaspi_rank_t rank);
+    gaspi_return_t lock_row_for_write(const LazyGaspiProcessInfo* info, const gaspi_segment_id_t seg, const gaspi_offset_t offset, 
+                        const gaspi_rank_t rank);
+    gaspi_return_t unlock_row_from_write(LazyGaspiProcessInfo* info, const gaspi_segment_id_t seg, const gaspi_offset_t offset,
+                           const gaspi_rank_t rank, const gaspi_queue_id_t q = 0, bool wait_on_q = true);
+
+    #define ROW_SIZE_IN_TABLE (sizeof(Lock) + sizeof(LazyGaspiRowData) + info->row_size + info->n * sizeof(lazygaspi_age_t))
+    #define ROW_SIZE_IN_CACHE (sizeof(Lock) + sizeof(LazyGaspiRowData) + info->row_size)
+    #define ROW_LOCK_OFFSET 0
+    #define ROW_METADATA_OFFSET (ROW_LOCK_OFFSET + sizeof(Lock))
+
+#else
+    #define ROW_SIZE_IN_TABLE (sizeof(LazyGaspiRowData) + info->row_size + info->n * sizeof(lazygaspi_age_t))
+    #define ROW_SIZE_IN_CACHE (sizeof(LazyGaspiRowData) + info->row_size)
+    #define ROW_METADATA_OFFSET 0
+#endif
+
+#define ROW_DATA_OFFSET (ROW_METADATA_OFFSET + sizeof(LazyGaspiRowData))
+#define ROW_REQUEST_OFFSET(rank) (ROW_DATA_OFFSET + info->row_size + rank * sizeof(lazygaspi_age_t))
 
 struct RowLocationEntry{
     gaspi_rank_t rank;
@@ -104,13 +137,6 @@ static inline gaspi_offset_t get_offset_in_cache(LazyGaspiProcessInfo* info, laz
     return info->cacheOpts.hash(row_id, table_id, info) % info->cacheOpts.size;
 }
 
-static inline gaspi_size_t get_row_entry_size(LazyGaspiProcessInfo* info){
-    return sizeof(LazyGaspiRowData) + info->row_size + info->n * sizeof(lazygaspi_age_t);
-}
-
-static inline gaspi_offset_t get_prefetch_req_offset(LazyGaspiProcessInfo* info){
-    return sizeof(LazyGaspiRowData) + info->row_size+ info->id * sizeof(lazygaspi_age_t); 
-}
 /** Returns the minimum age for the current prefetch. 0 indicates no prefetching should occur. Resets flag to 0.
  * 
  *  Parameters:
@@ -120,7 +146,8 @@ static inline gaspi_offset_t get_prefetch_req_offset(LazyGaspiProcessInfo* info)
  *  rank - The rank to check for the prefetch flag.
  */
 static inline lazygaspi_age_t get_prefetch(const LazyGaspiProcessInfo* info, const gaspi_pointer_t rows, const gaspi_offset_t row, const gaspi_rank_t rank){
-    auto flag = (lazygaspi_age_t*)((bool*)rows + row + sizeof(LazyGaspiRowData) + info->row_size + rank * sizeof(lazygaspi_age_t)); 
+    auto flag = (lazygaspi_age_t*)((bool*)rows + row + ROW_REQUEST_OFFSET(rank)); 
+    //TODO: prefetch setting/resetting need to be made atomic
     if(*flag){
         auto temp = *flag;
         *flag = 0;
@@ -128,21 +155,5 @@ static inline lazygaspi_age_t get_prefetch(const LazyGaspiProcessInfo* info, con
     }
     return 0;
 }
-
-
-#ifdef LOCKED_OPERATIONS
-#define LOCK_MASK_WRITE (((gaspi_atomic_value_t)1) << (sizeof(gaspi_atomic_value_t) * 8 - 1))
-#define LOCK_MASK_READ (LOCK_MASK_WRITE - 1)
-#define LOCK_FREE_TO_WRITE_MASK ((gaspi_atomic_value_t)-1)
-#define LOCK_FREE_TO_READ_MASK LOCK_MASK_WRITE
-void lock_row_for_read(const LazyGaspiProcessInfo* info, const gaspi_segment_id_t seg, const gaspi_offset_t offset, 
-                       const gaspi_rank_t rank);
-void unlock_row_from_read(const LazyGaspiProcessInfo* info, const gaspi_segment_id_t seg, const gaspi_offset_t offset,
-                          const gaspi_rank_t rank, const gaspi_queue_id_t q = 0);
-void lock_row_for_write(const LazyGaspiProcessInfo* info, const gaspi_segment_id_t seg, const gaspi_offset_t offset, 
-                        const gaspi_rank_t rank);
-void unlock_row_from_write(LazyGaspiProcessInfo* info, const gaspi_segment_id_t seg, const gaspi_offset_t offset,
-                           const gaspi_rank_t rank, const gaspi_queue_id_t q = 0);
-#endif
 
 #endif

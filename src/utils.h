@@ -55,6 +55,9 @@ typedef unsigned long ulong;
                               from MPI: " << msg << std::endl; return GASPI_ERROR; }}
 #endif
 
+#define ROW_SIZE_IN_TABLE (sizeof(LazyGaspiRowData) + info->row_size + info->n * sizeof(lazygaspi_age_t))
+#define ROW_SIZE_IN_CACHE (sizeof(LazyGaspiRowData) + info->row_size)
+
 #ifdef LOCKED_OPERATIONS
     #define LOCK_MASK_WRITE (((gaspi_atomic_value_t)1) << (sizeof(gaspi_atomic_value_t) * 8 - 1))
 
@@ -69,15 +72,15 @@ typedef unsigned long ulong;
     gaspi_return_t unlock_row_from_write(LazyGaspiProcessInfo* info, const gaspi_segment_id_t seg, const gaspi_offset_t offset,
                            const gaspi_rank_t rank, const gaspi_queue_id_t q = 0, bool wait_on_q = true);
 
-    #define ROW_SIZE_IN_TABLE (sizeof(Lock) + sizeof(LazyGaspiRowData) + info->row_size + info->n * sizeof(lazygaspi_age_t))
-    #define ROW_SIZE_IN_CACHE (sizeof(Lock) + sizeof(LazyGaspiRowData) + info->row_size)
     #define ROW_LOCK_OFFSET 0
     #define ROW_METADATA_OFFSET (ROW_LOCK_OFFSET + sizeof(Lock))
+    #define ROW_SIZE_IN_TABLE_WITH_LOCK (ROW_SIZE_IN_TABLE + sizeof(Lock))
+    #define ROW_SIZE_IN_CACHE_WITH_LOCK (ROW_SIZE_IN_CACHE + sizeof(Lock))
 
 #else
-    #define ROW_SIZE_IN_TABLE (sizeof(LazyGaspiRowData) + info->row_size + info->n * sizeof(lazygaspi_age_t))
-    #define ROW_SIZE_IN_CACHE (sizeof(LazyGaspiRowData) + info->row_size)
     #define ROW_METADATA_OFFSET 0
+    #define ROW_SIZE_IN_TABLE_WITH_LOCK ROW_SIZE_IN_TABLE
+    #define ROW_SIZE_IN_CACHE_WITH_LOCK ROW_SIZE_IN_CACHE
 #endif
 
 #define ROW_DATA_OFFSET (ROW_METADATA_OFFSET + sizeof(LazyGaspiRowData))

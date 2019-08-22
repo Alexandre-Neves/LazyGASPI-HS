@@ -69,13 +69,13 @@ gaspi_return_t lazygaspi_read(lazygaspi_id_t row_id, lazygaspi_id_t table_id, la
     gaspi_pointer_t cache;
     r = gaspi_segment_ptr(LAZYGASPI_ID_CACHE, &cache); ERROR_CHECK;
 
-    auto offset_cache = get_offset_in_cache(info, row_id, table_id) * ROW_SIZE_IN_CACHE;
+    auto offset_cache = get_offset_in_cache(info, row_id, table_id) * ROW_SIZE_IN_CACHE_WITH_LOCK;
     auto rowData = (LazyGaspiRowData*)((char*)cache + offset_cache + ROW_METADATA_OFFSET);
 
     gaspi_rank_t rank;
     gaspi_offset_t offset;
     std::tie(rank, offset) = get_row_location(info, row_id, table_id);
-    offset *= ROW_SIZE_IN_TABLE;
+    offset *= ROW_SIZE_IN_TABLE_WITH_LOCK;
 
     PRINT_DEBUG_INTERNAL(" | Reading row from rank " << rank << " with slack " << slack 
                         << " and current age " << info->age << ". Minimum age was " << min << ". Rows offset is " << 

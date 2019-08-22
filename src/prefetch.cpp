@@ -19,7 +19,7 @@ gaspi_return_t lazygaspi_fulfill_prefetches(){
     gaspi_pointer_t rows_table;
     r = gaspi_segment_ptr(LAZYGASPI_ID_ROWS, &rows_table); ERROR_CHECK;
 
-    const auto entry_size = ROW_SIZE_IN_TABLE;
+    const auto entry_size = ROW_SIZE_IN_TABLE_WITH_LOCK;
     const auto row_amount = get_row_amount(info->table_size, info->table_amount, info->n, info->id, info->shardOpts);
 
     for(gaspi_rank_t rank = 0; rank < info->n; rank++)
@@ -33,7 +33,7 @@ gaspi_return_t lazygaspi_fulfill_prefetches(){
                 PRINT_DEBUG_INTERNAL("Writing row to requesting rank. Minimum age was " << min << ", current age was " << data->age 
                             << ". ID's were " << data->row_id << '/' << data->table_id << '.');
 
-                const auto cache_offset = get_offset_in_cache(info, data->row_id, data->table_id) * ROW_SIZE_IN_CACHE;
+                const auto cache_offset = get_offset_in_cache(info, data->row_id, data->table_id) * ROW_SIZE_IN_CACHE_WITH_LOCK;
                 #ifdef LOCKED_OPERATIONS
                     r = lock_row_for_read(info, LAZYGASPI_ID_ROWS, entry_size * i + ROW_LOCK_OFFSET, info->id); ERROR_CHECK;
                     r = lock_row_for_write(info, LAZYGASPI_ID_CACHE, cache_offset + ROW_LOCK_OFFSET, rank); ERROR_CHECK;
@@ -77,7 +77,7 @@ gaspi_return_t lazygaspi_prefetch(lazygaspi_id_t* row_vec, lazygaspi_id_t* table
             PRINT_DEBUG_INTERNAL(" | : > Tried to prefetch from own rows table. Ignoring request.");
             continue;
         }
-        auto flag_offset = offset * ROW_SIZE_IN_TABLE + ROW_REQUEST_OFFSET(info->id);
+        auto flag_offset = offset * ROW_SIZE_IN_TABLE_WITH_LOCK + ROW_REQUEST_OFFSET(info->id);
 
         r = write(LAZYGASPI_ID_INFO, LAZYGASPI_ID_ROWS, offsetof(LazyGaspiProcessInfo, communicator), 
                   flag_offset,  sizeofmember(LazyGaspiProcessInfo, communicator), rank);
@@ -108,7 +108,7 @@ gaspi_return_t lazygaspi_prefetch_all(lazygaspi_slack_t slack){
             PRINT_DEBUG_INTERNAL(" | : Tried to prefetch from own rows table. Ignoring request.");
             continue;
         }
-        auto flag_offset = offset * ROW_SIZE_IN_TABLE + ROW_REQUEST_OFFSET(info->id);
+        auto flag_offset = offset * ROW_SIZE_IN_TABLE_WITH_LOCK + ROW_REQUEST_OFFSET(info->id);
 
         r = write(LAZYGASPI_ID_INFO, LAZYGASPI_ID_ROWS, offsetof(LazyGaspiProcessInfo, communicator), 
                  flag_offset, sizeofmember(LazyGaspiProcessInfo, communicator), rank);

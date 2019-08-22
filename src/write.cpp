@@ -49,9 +49,9 @@ gaspi_return_t lazygaspi_write(lazygaspi_id_t row_id, lazygaspi_id_t table_id, v
     gaspi_rank_t rank; 
     gaspi_offset_t offset;
     std::tie(rank, offset) = get_row_location(info, row_id, table_id); 
-    offset *= ROW_SIZE_IN_TABLE;
+    offset *= ROW_SIZE_IN_TABLE_WITH_LOCK;
 
-    auto offset_cache = get_offset_in_cache(info, row_id, table_id) * ROW_SIZE_IN_CACHE;
+    auto offset_cache = get_offset_in_cache(info, row_id, table_id) * ROW_SIZE_IN_CACHE_WITH_LOCK;
 
     PRINT_DEBUG_INTERNAL(" | Writing row to rank " << rank << " and an age of " << info->age << ", where the rows offset is " 
                         << offset + ROW_METADATA_OFFSET << " bytes and cache offset is " <<  offset_cache + ROW_METADATA_OFFSET 

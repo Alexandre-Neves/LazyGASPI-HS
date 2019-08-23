@@ -95,8 +95,8 @@ gaspi_return_t lazygaspi_init(lazygaspi_id_t table_amount, lazygaspi_id_t table_
 
 gaspi_return_t allocate_segments(LazyGaspiProcessInfo* info){
     auto row_amount = get_row_amount(info->table_size, info->table_amount, info->n, info->id, info->shardOpts);
-    auto rows_table_size = (sizeof(LazyGaspiRowData) + info->row_size + info->n * sizeof(lazygaspi_age_t)) * row_amount;
-    auto cache_size = info->cacheOpts.size * (sizeof(LazyGaspiRowData) + info->row_size);
+    auto rows_table_size = ROW_SIZE_IN_TABLE_WITH_LOCK * row_amount;
+    auto cache_size = ROW_SIZE_IN_CACHE_WITH_LOCK * info->cacheOpts.size;
 
     PRINT_DEBUG_INTERNAL("Allocating cache with " << cache_size << " bytes (" << info->cacheOpts.size << " entries) and rows with "
                          << rows_table_size << " bytes (" << row_amount << " entries)... Sharding options block size was "

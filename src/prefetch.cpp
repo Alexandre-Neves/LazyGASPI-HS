@@ -19,22 +19,34 @@ gaspi_return_t lazygaspi_fulfill_prefetches(){
     gaspi_pointer_t rows_table;
     r = gaspi_segment_ptr(LAZYGASPI_ID_ROWS, &rows_table); ERROR_CHECK;
 
-    const auto entry_size = get_row_entry_size(info);
+    const auto entry_size = ROW_SIZE_IN_TABLE_WITH_LOCK;
     const auto row_amount = get_row_amount(info->table_size, info->table_amount, info->n, info->id, info->shardOpts);
 
     for(gaspi_rank_t rank = 0; rank < info->n; rank++)
     for(gaspi_offset_t i = 0; i < row_amount; i++){
         if(auto min = get_prefetch(info, rows_table, entry_size * i, rank)){
             auto data = (LazyGaspiRowData*)((char*)rows_table + entry_size * i);
-            if(data->age >= min){
+            //If a new row is written while this is happening, the new row will be expected to have an age bigger than 
+            //the previous age (TODO: not actually made explicit), which will also satisfy this condition.
+            if(data->age >= min){ 
                 if(info->table_size == 0) return GASPI_ERR_NOINIT;
-
                 PRINT_DEBUG_INTERNAL("Writing row to requesting rank. Minimum age was " << min << ", current age was " << data->age 
                             << ". ID's were " << data->row_id << '/' << data->table_id << '.');
 
-                r = write(LAZYGASPI_ID_ROWS, LAZYGASPI_ID_CACHE, entry_size * i, get_offset_in_cache(info, data->row_id, data->table_id), 
-                          sizeof(LazyGaspiRowData) + info->row_size, rank);
+                const auto cache_offset = get_offset_in_cache(info, data->row_id, data->table_id) * ROW_SIZE_IN_CACHE_WITH_LOCK;
+                #ifdef LOCKED_OPERATIONS
+                    r = lock_row_for_read(info, LAZYGASPI_ID_ROWS, entry_size * i + ROW_LOCK_OFFSET, info->id); ERROR_CHECK;
+                    r = lock_row_for_write(info, LAZYGASPI_ID_CACHE, cache_offset + ROW_LOCK_OFFSET, rank); ERROR_CHECK;
+                #endif
+
+                r = write(LAZYGASPI_ID_ROWS, LAZYGASPI_ID_CACHE, entry_size * i + ROW_METADATA_OFFSET, 
+                          cache_offset + ROW_METADATA_OFFSET, ROW_SIZE_IN_CACHE, rank);
                 ERROR_CHECK;
+
+                #ifdef LOCKED_OPERATIONS
+                    r = unlock_row_from_write(info, LAZYGASPI_ID_CACHE, cache_offset + ROW_LOCK_OFFSET, rank); ERROR_CHECK;
+                    r = unlock_row_from_read(info, LAZYGASPI_ID_ROWS, entry_size * i + ROW_LOCK_OFFSET, info->id); ERROR_CHECK;
+                #endif
             }
         } 
     }
@@ -63,12 +75,13 @@ gaspi_return_t lazygaspi_prefetch(lazygaspi_id_t* row_vec, lazygaspi_id_t* table
         std::tie(rank, offset) = get_row_location(info, *row_vec, *table_vec);
         if(rank == info->id){
             PRINT_DEBUG_INTERNAL(" | : > Tried to prefetch from own rows table. Ignoring request.");
-            return GASPI_SUCCESS;
+            continue;
         }
-        auto flag_offset = offset * get_row_entry_size(info) + get_prefetch_req_offset(info);
+        auto flag_offset = offset * ROW_SIZE_IN_TABLE_WITH_LOCK + ROW_REQUEST_OFFSET(info->id);
 
         r = write(LAZYGASPI_ID_INFO, LAZYGASPI_ID_ROWS, offsetof(LazyGaspiProcessInfo, communicator), 
-                 flag_offset,  sizeofmember(LazyGaspiProcessInfo, communicator), rank);
+                  flag_offset,  sizeofmember(LazyGaspiProcessInfo, communicator), rank);
+        ERROR_CHECK;
     }
 
     PRINT_DEBUG_INTERNAL(" | Wrote all prefetch requests. Waiting on queue 0...");
@@ -91,7 +104,12 @@ gaspi_return_t lazygaspi_prefetch_all(lazygaspi_slack_t slack){
         PRINT_DEBUG_INTERNAL(" | Prefetching row " << row << " of table " << table << "...");
 
         std::tie(rank, offset) = get_row_location(info, row, table);
-        auto flag_offset = offset * get_row_entry_size(info) + get_prefetch_req_offset(info);
+        if(rank == info->id){
+            PRINT_DEBUG_INTERNAL(" | : Tried to prefetch from own rows table. Ignoring request.");
+            continue;
+        }
+        auto flag_offset = offset * ROW_SIZE_IN_TABLE_WITH_LOCK + ROW_REQUEST_OFFSET(info->id);
+
         r = write(LAZYGASPI_ID_INFO, LAZYGASPI_ID_ROWS, offsetof(LazyGaspiProcessInfo, communicator), 
                  flag_offset, sizeofmember(LazyGaspiProcessInfo, communicator), rank);
         ERROR_CHECK;

@@ -5,7 +5,6 @@
 #include <cstring>
 
 #ifdef LOCKED_OPERATIONS
-//TODO: remove goto and replace with adequate loop
 gaspi_return_t lock_row_for_read(const LazyGaspiProcessInfo* info, const gaspi_segment_id_t seg, const gaspi_offset_t offset, 
                        const gaspi_rank_t rank){
     gaspi_atomic_value_t oldval;

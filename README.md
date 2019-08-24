@@ -35,8 +35,9 @@ For installation instructions, see INSTALL.
   - [`lazygaspi_term`](#fTerm)
 
 [Locks](#Locks)\
+\
 [Tests](#Tests)
-- [Test 0](#Test-0)
+ - [Test 0](#Test-0)
 ## How it works
 
 Data (in the form of rows) is sharded and distributed among all processes (see [ShardingOptions](#so)).\

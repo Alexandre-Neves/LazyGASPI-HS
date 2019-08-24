@@ -42,7 +42,7 @@ For installation instructions, see INSTALL.
 
 Data (in the form of rows) is sharded and distributed among all processes (see [ShardingOptions](#so)).\
 Each process acts as a server for the rows that were distributed to it (will send rows that were prefetched to the requesting client).\
-[`lazygaspi_fulfill_prefetches`](#fFulfill) must be called (ideally at the end of the current iteration) in order for prefetching to occur. If the program does not resort to prefetching, there is no need to call [`lazygaspi_fulfill_prefetches`](#fFulfill).\
+[`lazygaspi_fulfill_prefetches`](#fFulfill) must be called (ideally at the end of the current iteration) in order for prefetching to occur. If the program does not resort to prefetching, there is no need to call [`lazygaspi_fulfill_prefetches`](#fFulfill).
 
 <a id="idsMacStrTypFunc"></a>
 ## ID's/Macros, Structures/Typedefs and Functions

@@ -1,0 +1,69 @@
+                          //////////////////
+                          // REQUIREMENTS //
+                          //////////////////
+
+To build LazyGASPI you need:
+- C++17 compiler
+- An implementation of GASPI 17.1 (e.g., GPI2(*) )
+
+If MPI support is intended:
+- MPI 3.x.x
+
+(*) Make sure to get the most recent version of GPI2 at 
+    https://github.com/cc-hpc-itwm/GPI-2
+
+                          //////////////////
+                          // INSTALLATION //
+                          //////////////////
+
+Before installing, the configure.sh script must be run. Use the -h option to
+see all of the available options. You'll be able to choose where the library 
+will be installed (the prefix), whether MPI shall be supported, the name of the 
+GASPI library to use, whether the library will be static or shared, etc...
+
+After configuration, use `make` to build and install the library. Make has the
+following (relevant) targets:
+
+ install   - Compiles the library, copies include header(s) to prefix and installs
+             it in the prefix.
+
+ tests     - Makes test(s) that will be installed in the prefix. Use option -m
+             when calling configure.sh to predetermine the nodes in the 
+             machinefile/hostfile for gaspi_run/mpirun. Use target 'move' if 
+             library was made shared to make sure the dynamic linker can find it.
+             This will also create two scripts to make running the tests easier. 
+             See TESTS section.
+
+ all       - Makes 'install', then 'tests'.
+
+ clean     - Removes the 'bin' folder. This will force all object files to be 
+             recompiled if 'install' is called again.
+
+ uninstall - Removes the library from the 'lib' folder in the prefix, the header(s)
+             from the 'include' folder in the prefix, and the tests from the
+             'tests' folder. Removes output files in that folder as well. 
+             Removes all folders left empty by this.
+
+remove_all - Makes 'uninstall', then 'clean'.
+
+move       - Moves the library to /usr/local/lib, if it is shared. For static 
+             libraries, this does nothing.
+
+                            ///////////
+                            // TESTS //
+                            ///////////
+
+The following scripts expect a file named 'machinefile' to be in the same 
+directory, which will be used to determine which nodes will run the application
+(this also applies to MPI "hybrids"):
+
+run_test.sh [TEST] [ARGS...] - Runs a specific test.
+run_all.sh [ARGS...]         - Runs all tests with the given args.
+
+If no arguments are provided to run_all.sh, default arguments are used (see 
+script for default arguments of a specific test). If no arguments are provided
+to run_test.sh, no arguments will be passed to the application.
+
+See README.md for more information on what the specific tests do.
+
+

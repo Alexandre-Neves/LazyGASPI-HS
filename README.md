@@ -1,7 +1,7 @@
 # LazyGASPI-HS
 
 This is an implementation of the LazyGASPI library where all processes have the same role (**homogeneous**) and data is **sharded** among them.\
-LazyGASPI is the implementation of bounded staleness (https://www.usenix.org/system/files/conference/atc14/atc14-paper-cui.pdf) using GASPI (http://www.gaspi.de/).
+LazyGASPI is the implementation of bounded staleness (https://www.usenix.org/system/files/conference/atc14/atc14-paper-cui.pdf) using GASPI (http://www.gaspi.de/).\
 For installation instructions, see INSTALL.
 
 ## Table of Contents

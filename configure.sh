@@ -14,7 +14,7 @@ Usage:
 
 Where OPTIONS are:
         -h,--help               - Prints this help message.
-        -p                      - Indicates the installation path for LazyGASPI.
+        -p                      - Indicates the installation path for LazyGASPI. Default is /usr/local.
         -m [x*node]             - Adds 'x' entries of 'node' to the machinefile. Only necessary if tests are made. Can be used multiple times.
         --with-mpi[=<path>]     - Indicates that the library should be compiled with MPI support. 
                                   If path is omitted, default location for mpicxx will be used.

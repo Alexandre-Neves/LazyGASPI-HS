@@ -34,7 +34,7 @@ For installation instructions, see INSTALL.
   - [`lazygaspi_clock`](#fClock)
   - [`lazygaspi_term`](#fTerm)
 
-[Locks](#Locks)
+[Locks](#Locks)\
 [Tests](#Tests)
 - [Test 0](#Test-0)
 ## How it works

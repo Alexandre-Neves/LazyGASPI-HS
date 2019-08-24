@@ -298,7 +298,7 @@ Returns:
 
 ## Locks
 
-Row operations (`lazygaspi_read`, `lazygaspi_write` and `lazygaspi_prefetch`) can be locked. For that, configuration must be called with the --with-lock option.\
+Row operations (`lazygaspi_read`, `lazygaspi_write` and `lazygaspi_prefetch`) can be locked. For that, configuration must be called with the `--with-lock` option.\
 These locks ensure that only one write occurs at a time on a row and when reads are occurring, a write can't happen (and vice-versa).
 
 ## Tests

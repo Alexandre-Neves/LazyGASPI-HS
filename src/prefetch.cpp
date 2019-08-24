@@ -91,7 +91,10 @@ gaspi_return_t lazygaspi_prefetch(lazygaspi_id_t* row_vec, lazygaspi_id_t* table
 gaspi_return_t lazygaspi_prefetch_all(lazygaspi_slack_t slack){
     LazyGaspiProcessInfo* info;
     auto r = lazygaspi_get_info(&info); ERROR_CHECK_COUT;    
-
+    if(info->age == 0){
+        PRINT_DEBUG_INTERNAL("Error: clock must be called at least once before prefetch.");
+        return GASPI_ERR_NOINIT;
+    }   
     info->communicator = get_min_age(info->age, slack, info->offset_slack);
 
     PRINT_DEBUG_INTERNAL("Writing prefetch requests for all rows of all tables...");

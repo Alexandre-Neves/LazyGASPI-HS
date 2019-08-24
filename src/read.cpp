@@ -5,7 +5,6 @@
 #include <cstring>
 
 #ifdef LOCKED_OPERATIONS
-//TODO: remove goto and replace with adequate loop
 gaspi_return_t lock_row_for_read(const LazyGaspiProcessInfo* info, const gaspi_segment_id_t seg, const gaspi_offset_t offset, 
                        const gaspi_rank_t rank){
     gaspi_atomic_value_t oldval;
@@ -46,8 +45,8 @@ gaspi_return_t unlock_row_from_read(const LazyGaspiProcessInfo* info, const gasp
     if(r != GASPI_SUCCESS) PRINT_ON_ERROR(r);
     return r;
 }
-
 #endif
+
 gaspi_return_t lazygaspi_read(lazygaspi_id_t row_id, lazygaspi_id_t table_id, lazygaspi_slack_t slack, void* row,
                               LazyGaspiRowData* data){
     LazyGaspiProcessInfo* info;
@@ -110,16 +109,6 @@ gaspi_return_t lazygaspi_read(lazygaspi_id_t row_id, lazygaspi_id_t table_id, la
             r = readwait(LAZYGASPI_ID_ROWS, LAZYGASPI_ID_CACHE, offset + ROW_METADATA_OFFSET, offset_cache + ROW_METADATA_OFFSET, 
                          ROW_SIZE_IN_CACHE, rank);
             ERROR_CHECK;
-        #endif
-
-        #if defined(DEBUG) || defined(DEBUG_INTERNAL)
-            if(rowData->row_id != row_id || rowData->table_id != table_id) attempt_counter++;
-            if(attempt_counter && attempt_counter % 1000 == 0) { 
-                PRINT_DEBUG_INTERNAL(" | : Attempts are now at " << attempt_counter << ".\nRow Data: " << rowData->age << ", " 
-                                    << rowData->row_id << ", " << rowData->table_id << "\nRequirements: " << min << ", " 
-                                    << row_id << ", " << table_id);
-            }
-            if(attempt_counter == 10000) return GASPI_ERR_INV_SEG;
         #endif
     }    
 

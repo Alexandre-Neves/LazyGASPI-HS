@@ -45,6 +45,10 @@ gaspi_return_t lazygaspi_write(lazygaspi_id_t row_id, lazygaspi_id_t table_id, v
         PRINT_DEBUG_INTERNAL(" | Error: row/table ID was out of bounds.");
         return GASPI_ERR_INV_NUM;
     }
+    if(info->age == 0){
+        PRINT_DEBUG_INTERNAL("Error: clock must be called at least once before prefetch.");
+        return GASPI_ERR_NOINIT;
+    }
 
     gaspi_rank_t rank; 
     gaspi_offset_t offset;

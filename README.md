@@ -50,7 +50,7 @@ Each process acts as a server for the rows that were distributed to it (will sen
 ### ID's/Macros
 | Segment ID | Explanation |
 | ---------- | ----------- |
-| <a id="idInfo"></a>`LAZYGASPI_ID_INFO = 0` | Stores the `LazyGaspiProcessInfo`[#lgpi] of the current rank | 
+| <a id="idInfo"></a>`LAZYGASPI_ID_INFO = 0` | Stores the [`LazyGaspiProcessInfo`](#lgpi) of the current rank | 
 | <a id="idRows"></a>`LAZYGASPI_ID_ROWS = 1` | Stores the rows assigned to the current rank |
 | <a id="idCache"></a>`LAZYGASPI_ID_CACHE = 2` | Stores the cache |
 | <a id="idAvail"></a>`LAZYGASPI_ID_AVAIL = 3` | The first available segment ID for allocation (not an actual segment)|

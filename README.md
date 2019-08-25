@@ -49,7 +49,7 @@ Each process acts as a server for the rows that were distributed to it (will sen
 ### ID's/Macros
 | Segment ID | Explanation |
 | ---------- | ----------- |
-| <a id="idInfo"></a>`LAZYGASPI_ID_INFO = 0` | Stores the `LazyGaspiProcessInfo`[#lgpi] of the current rank | 
+| <a id="idInfo"></a>`LAZYGASPI_ID_INFO = 0` | Stores the [`LazyGaspiProcessInfo`](#lgpi) of the current rank | 
 | <a id="idRows"></a>`LAZYGASPI_ID_ROWS = 1` | Stores the rows assigned to the current rank |
 | <a id="idCache"></a>`LAZYGASPI_ID_CACHE = 2` | Stores the cache |
 | <a id="idAvail"></a>`LAZYGASPI_ID_AVAIL = 3` | The first available segment ID for allocation (not an actual segment)|
@@ -92,13 +92,11 @@ Value can be higher or equal to the cache's `size` (modulo `size` is used afterw
 | `gaspi_size_t`    | `row_size`         | The size of each row (same for all), in bytes |
 | `lazygaspi_age_t` | `communicator`     | Member used for communication with servers | 
 | `std::ostream*`   | `out`              | A pointer to the output stream for debugging. See [OutputCreator](#oc). |
-| `bool`            | `offset_slack`     | `true` if accetable age range should be calculated from the previous age (iteration); `false` if it should be calculated from the current age (\*\*) |
+| `bool`            | `offset_slack`     | `true` if accetable age range should be calculated from the previous age (iteration); `false` if it should be calculated from the current age (\*) |
 | `ShardingOptions` | `shardOpts`        | The user options for how to shard the data among the processes. See [`ShardingOptions`](#so) for more information |
 | `CachingOptions`  | `cacheOpts`        | The user options for how to cache read rows. See [`CachingOptions`](#co) for more information |
 
-(\*) In this case, collective operations should not be used. Always check either if `num_(clients/servers)` is `1` or if 
-group ID is `GASPI_GROUP_ALL`.\
-(\*\*) For example, if current age is 7, slack is 2 and `offset_slack` is `true`, the minimum acceptable age for a read row is 7 - 2 - 1 = 4; if `offset_slack` is `false`, the minimum age is 7 - 2 = 5.
+(\*) For example, if current age is 7, slack is 2 and `offset_slack` is `true`, the minimum acceptable age for a read row is 7 - 2 - 1 = 4; if `offset_slack` is `false`, the minimum age is 7 - 2 = 5.
 
 <a id="lgrd"></a>
 #### `LazyGaspiRowData (struct)`

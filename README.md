@@ -101,7 +101,7 @@ Value can be higher or equal to the cache's `size` (modulo `size` is used afterw
 
 <a id="lgrd"></a>
 #### `LazyGaspiRowData (struct)`
-This is the metadata associated to each row stored in the **server**.
+This is the metadata associated to a row stored by a process or read from a process.
 
 | Type | Member | Explanation |
 | ---- | ------ | ----------- |
@@ -165,7 +165,7 @@ Returns:
 - `GASPI_SUCCESS` on success
 - `GASPI_ERROR` on unknown error thrown by GASPI (or another error code)
 - `GASPI_TIMEOUT` on timeout
-- `GASPI_ERR_INV_RANK` if running in a single node or, if MPI is supported, if it assigned a different rank or determined a different amount of ranks (can also be thrown by GASPI for other reasons)
+- `GASPI_ERR_INV_RANK` if GASPI failed to obtain the amount of ranks (returned 0), or if MPI is supported, if it assigned a different rank or determined a different amount of ranks from GASPI (can also be thrown by GASPI for other reasons)
 - `GASPI_ERR_INV_NUM` if a "size" was `0` and its corresponding `SizeDeterminer` was a `nullptr` (can also be thrown by GASPI for other reasons)
 - `GASPI_ERR_NULLPTR` if the OutputCreator failed to set a value for `LazyGaspiProcessInfo::out`
 
@@ -253,7 +253,8 @@ Returns:
 - `GASPI_ERROR` on unknown error thrown by GASPI (or another error code);
 - `GASPI_TIMEOUT` on timeout;
 - `GASPI_ERR_NULLPTR` if passed pointer was a `nullptr`;
-- `GASPI_ERR_INV_NUM` if either `row_id` or `table_id` is not a valid ID (or thrown by GASPI for another reason).
+- `GASPI_ERR_INV_NUM` if either `row_id` or `table_id` is not a valid ID (or thrown by GASPI for another reason);
+- `GASPI_ERR_NOINIT` if `lazygaspi_clock` has not been called even once (or thrown by GASPI for another reason).
 
 <a id="fWrite"></a>
 #### `lazygaspi_write`

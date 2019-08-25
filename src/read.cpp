@@ -62,7 +62,11 @@ gaspi_return_t lazygaspi_read(lazygaspi_id_t row_id, lazygaspi_id_t table_id, la
         PRINT_ON_ERROR(" | Error: row/table ID was out of bounds.");
         return GASPI_ERR_INV_NUM;
     }
-
+    if(info->age == 0){
+        PRINT_ON_ERROR(" | Error: clock must be called at least once before prefetch.");
+        return GASPI_ERR_NOINIT;
+    }
+  
     auto min = get_min_age(info->age, slack, info->offset_slack);
 
     gaspi_pointer_t cache;

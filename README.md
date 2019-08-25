@@ -1,7 +1,7 @@
 # LazyGASPI-HS
 
 This is an implementation of the LazyGASPI library where all processes have the same role (**homogeneous**) and data is **sharded** among them.\
-LazyGASPI is the implementation of bounded staleness (https://www.usenix.org/system/files/conference/atc14/atc14-paper-cui.pdf) using GASPI (http://www.gaspi.de/).
+LazyGASPI is the implementation of bounded staleness (https://www.usenix.org/system/files/conference/atc14/atc14-paper-cui.pdf) using GASPI (http://www.gaspi.de/).  
 For installation instructions, see INSTALL.
 
 ## Table of Contents
@@ -34,14 +34,15 @@ For installation instructions, see INSTALL.
   - [`lazygaspi_clock`](#fClock)
   - [`lazygaspi_term`](#fTerm)
 
-[Locks](#Locks)
+[Locks](#Locks)\
+\
 [Tests](#Tests)
-- [Test 0](#Test-0)
+ - [Test 0](#Test-0)
 ## How it works
 
 Data (in the form of rows) is sharded and distributed among all processes (see [ShardingOptions](#so)).\
 Each process acts as a server for the rows that were distributed to it (will send rows that were prefetched to the requesting client).\
-[`lazygaspi_fulfill_prefetches`](#fFulfill) must be called (ideally at the end of the current iteration) in order for prefetching to occur. If the program does not resort to prefetching, there is no need to call [`lazygaspi_fulfill_prefetches`](#fFulfill).\
+[`lazygaspi_fulfill_prefetches`](#fFulfill) must be called (ideally at the end of the current iteration) in order for prefetching to occur. If the program does not resort to prefetching, there is no need to call [`lazygaspi_fulfill_prefetches`](#fFulfill).
 
 <a id="idsMacStrTypFunc"></a>
 ## ID's/Macros, Structures/Typedefs and Functions
@@ -296,7 +297,7 @@ Returns:
 
 ## Locks
 
-Row operations (`lazygaspi_read`, `lazygaspi_write` and `lazygaspi_prefetch`) can be locked. For that, configuration must be called with the --with-lock option.\
+Row operations (`lazygaspi_read`, `lazygaspi_write` and `lazygaspi_prefetch`) can be locked. For that, configuration must be called with the `--with-lock` option.\
 These locks ensure that only one write occurs at a time on a row and when reads are occurring, a write can't happen (and vice-versa).
 
 ## Tests

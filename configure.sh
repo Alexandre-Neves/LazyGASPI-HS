@@ -27,8 +27,9 @@ Where OPTIONS are:
         --debug-performance     - Sets the DEBUG_PERF macro during compilaion. See documentation for more details.
         --shared,--static       - Indicates if the library will be shared or static. Default is static.
         --eigen=<path>          - Indicates a path to the Eigen headers (download from http://eigen.tuxfamily.org). Only necessary if tests will be made.
-        --with-lock[=<val>]     - If <val> is 1, library is compiled with LOCKED_OPERATIONS, which means that a lock will be set everytime a row is written
-                                  to or read from. Default is 1. Omitting this option has the same effect as --with-lock=0.
+        --with-lock             - The library will be compiled with LOCKED_OPERATIONS, which means that a lock will be set everytime a row is written
+                                  or read.
+		--with-safety-checks    - The library will be compiled with SAFETY_CHECKS, which means that input for the library's functions will be checked.
 EOF
 }
 
@@ -51,7 +52,6 @@ GASPI_LIBNAME="GPI2"
 EIGEN="/usr/local/include/eigen3"
 LIB_PATH="$PREFIX/lib"
 INCL_PATH="$PREFIX/include"
-WITH_LOCK=0
 
 while getopts $allopts opt; do
     case $opt in
@@ -123,10 +123,10 @@ while getopts $allopts opt; do
             EIGEN=${OPTARG#*=}
         ;;
         with-lock)
-            WITH_LOCK=1
+            echo "CXXFLAGS+=-DLOCKED_OPERATIONS"
         ;;
-        with-lock=*)
-            WITH_LOCK=${OPTARG#*=}
+		with-safety-checks)
+            echo "CXXFLAGS+=-DSAFETY_CHECKS"
         ;;
         esac
     ;;
@@ -159,9 +159,6 @@ if [ $WITH_MPI = 1 ]; then
         echo "CXX=$MPI_PATH/bin/mpicxx" >> $MAKE_INC
         echo "MPI_PATH=$MPI_PATH" >> $MAKE_INC
     fi
-fi
-if [ $WITH_LOCK = 1 ]; then
-    echo "CXXFLAGS+=-DLOCKED_OPERATIONS" >> $MAKE_INC
 fi
 
 echo "WITH_MPI=$WITH_MPI" >> $MAKE_INC

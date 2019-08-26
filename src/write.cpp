@@ -36,19 +36,21 @@ gaspi_return_t lazygaspi_write(lazygaspi_id_t row_id, lazygaspi_id_t table_id, v
     auto r = lazygaspi_get_info(&info); ERROR_CHECK_COUT;
 
     PRINT_DEBUG_INTERNAL("Writing row " << row_id << " of table " << table_id << "...");
-
+    
+    #ifdef SAFETY_CHECKS
     if(row == nullptr){
-        PRINT_DEBUG_INTERNAL(" | Error: tried to write nullptr as a row.");
+        PRINT_ON_ERROR("Tried to write nullptr as a row.");
         return GASPI_ERR_NULLPTR;
     }
     if(row_id >= info->table_size || table_id >= info->table_amount){
-        PRINT_DEBUG_INTERNAL(" | Error: row/table ID was out of bounds.");
+        PRINT_ON_ERROR("Row/table ID was out of bounds.");
         return GASPI_ERR_INV_NUM;
     }
     if(info->age == 0){
-        PRINT_DEBUG_INTERNAL("Error: clock must be called at least once before prefetch.");
+        PRINT_ON_ERROR("Clock must be called at least once before prefetch.");
         return GASPI_ERR_NOINIT;
     }
+    #endif
 
     gaspi_rank_t rank; 
     gaspi_offset_t offset;

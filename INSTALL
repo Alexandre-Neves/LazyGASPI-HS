@@ -44,9 +44,9 @@ following (relevant) targets:
              'tests' folder. Removes output files in that folder as well. 
              Removes all folders left empty by this.
 
-remove_all - Makes 'uninstall', then 'clean'.
+ remove_all - Makes 'uninstall', then 'clean'.
 
-move       - Moves the library to /usr/local/lib, if it is shared. For static 
+ move       - Moves the library to /usr/local/lib, if it is shared. For static 
              libraries, this does nothing.
 
                             ///////////
@@ -63,7 +63,4 @@ run_all.sh [ARGS...]         - Runs all tests with the given args.
 If no arguments are provided to run_all.sh, default arguments are used (see 
 script for default arguments of a specific test). If no arguments are provided
 to run_test.sh, no arguments will be passed to the application.
-
 See README.md for more information on what the specific tests do.
-
-

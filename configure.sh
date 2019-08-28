@@ -13,23 +13,51 @@ Usage:
        ./configure.sh [OPTIONS]
 
 Where OPTIONS are:
-        -h,--help               - Prints this help message.
-        -p                      - Indicates the installation path for LazyGASPI. Default is /usr/local.
-        -m [x*node]             - Adds 'x' entries of 'node' to the machinefile. Only necessary if tests are made. Can be used multiple times.
-        --with-mpi[=<path>]     - Indicates that the library should be compiled with MPI support. 
-                                  If path is omitted, default location for mpicxx will be used.
-        --gaspi-libname=<name>  - The name of the GASPI library to use. 
-                                  This is useful if both plain-GASPI and GASPI with MPI are installed.
-        --libpath=<path>        - The path to the GASPI library.
-        --debug                 - Sets the DEBUG macro during compilation. See documentation for more details.
-        --debug-internal        - Sets the DEBUG_INTERNAL macro during compilation. See documentation for more details.
-        --debug-test            - Sets the DEBUG_TEST macro during compilation. See documentation for more details.
-        --debug-performance     - Sets the DEBUG_PERF macro during compilaion. See documentation for more details.
-        --shared,--static       - Indicates if the library will be shared or static. Default is static.
-        --eigen=<path>          - Indicates a path to the Eigen headers (download from http://eigen.tuxfamily.org). Only necessary if tests will be made.
-        --with-lock             - The library will be compiled with LOCKED_OPERATIONS, which means that a lock will be set everytime a row is written
-                                  or read.
-		--with-safety-checks    - The library will be compiled with SAFETY_CHECKS, which means that input for the library's functions will be checked.
+        -h,--help                 Prints this help message.
+
+        -p                        Indicates the installation path for LazyGASPI.
+                                  Default is /usr/local.
+
+        -m [x*node]               Adds 'x' entries of 'node' to the machinefile.
+                                  Only necessary if tests are made. Can be used 
+                                  multiple times.
+
+        --with-mpi[=<path>]       Indicates that the library should be compiled 
+                                  with MPI support. If path is omitted, default 
+                                  location for mpicxx will be used.
+
+        --gaspi-libname=<name>    The name of the GASPI library to use. This is 
+                                  useful if both plain-GASPI and GASPI with MPI 
+                                  are installed.
+
+        --libpath=<path>          The path to the GASPI library.
+
+        --debug                   Sets the DEBUG macro during compilation. See 
+                                  documentation for more details.
+
+        --debug-internal          Sets   the    DEBUG_INTERNAL   macro   during 
+                                  compilation.  See   documentation  for   more 
+                                  details.
+        --debug-test              Sets the DEBUG_TEST macro during compilation. 
+                                  See documentation for more details.
+
+        --debug-performance       Sets the DEBUG_PERF macro during compilaion. 
+                                  See documentation for more details.
+
+        --shared,--static         Indicates  if the  library will  be shared or 
+                                  static. Default is static.
+
+        --eigen=<path>            Indicates  a   path  to   the  Eigen  headers 
+                                  (download  from  http://eigen.tuxfamily.org). 
+                                  Only necessary if tests will be made.
+
+        --with-lock               The   library   will   be   compiled   with 
+                                  LOCKED_OPERATIONS,  which  means  that a lock 
+                                  will be set everytime a row is written or read
+
+        --with-safety-checks      The   library   will   be   compiled   with 
+                                  SAFETY_CHECKS, which means that input for the
+                                  library's functions will be validated.
 EOF
 }
 
@@ -125,7 +153,7 @@ while getopts $allopts opt; do
         with-lock)
             echo "CXXFLAGS+=-DLOCKED_OPERATIONS"
         ;;
-		with-safety-checks)
+        with-safety-checks)
             echo "CXXFLAGS+=-DSAFETY_CHECKS"
         ;;
         esac

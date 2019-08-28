@@ -13,22 +13,53 @@ Usage:
        ./configure.sh [OPTIONS]
 
 Where OPTIONS are:
-        -h,--help               - Prints this help message.
-        -p                      - Indicates the installation path for LazyGASPI. Default is /usr/local.
-        -m [x*node]             - Adds 'x' entries of 'node' to the machinefile. Only necessary if tests are made. Can be used multiple times.
-        --with-mpi[=<path>]     - Indicates that the library should be compiled with MPI support. 
-                                  If path is omitted, default location for mpicxx will be used.
-        --gaspi-libname=<name>  - The name of the GASPI library to use. 
-                                  This is useful if both plain-GASPI and GASPI with MPI are installed.
-        --libpath=<path>        - The path to the GASPI library.
-        --debug                 - Sets the DEBUG macro during compilation. See documentation for more details.
-        --debug-internal        - Sets the DEBUG_INTERNAL macro during compilation. See documentation for more details.
-        --debug-test            - Sets the DEBUG_TEST macro during compilation. See documentation for more details.
-        --debug-performance     - Sets the DEBUG_PERF macro during compilaion. See documentation for more details.
-        --shared,--static       - Indicates if the library will be shared or static. Default is static.
-        --eigen=<path>          - Indicates a path to the Eigen headers (download from http://eigen.tuxfamily.org). Only necessary if tests will be made.
-        --with-lock[=<val>]     - If <val> is 1, library is compiled with LOCKED_OPERATIONS, which means that a lock will be set everytime a row is written
-                                  to or read from. Default is 1. Omitting this option has the same effect as --with-lock=0.
+        -h,--help               Prints this help message.
+
+        -p                      Indicates the installation path for LazyGASPI. 
+                                Default is /usr/local.
+
+        -m x*node               Adds 'x' entries of 'node' to the machinefile. 
+                                Only necessary if tests are made. Can be used 
+                                multiple times.
+
+        --with-mpi[=<path>]     Indicates that the library should be compiled 
+                                with MPI support. If path is omitted, default 
+                                location for mpicxx will be used.
+
+        --gaspi-libname=<name>  The name of the GASPI library to use. This is 
+                                useful if both plain-GASPI and GASPI with MPI
+                                are installed.
+
+        --libpath=<path>        The path to the GASPI library.
+
+        --debug                 Sets the DEBUG macro during compilation. See 
+                                documentation for more details.
+
+        --debug-internal        Sets the DEBUG_INTERNAL macro during compilation. 
+                                See documentation for more details.
+
+        --debug-test            Sets the DEBUG_TEST macro during compilation. 
+                                See documentation for more details.
+
+        --debug-performance     Sets the DEBUG_PERF macro during compilaion. See
+                                documentation for more details.
+
+        --shared,--static       Indicates  if  the  library  will  be shared or 
+                                static. Default is static.
+
+        --eigen=<path>          Indicates a path to the Eigen headers (download 
+                                from http://eigen.tuxfamily.org). Only necessary
+                                if tests will be made.
+
+        --with-lock             Library  is  compiled  with  LOCKED_OPERATIONS, 
+                                which means that a lock will be set everytime a 
+                                row is written to or read from. 
+
+        --with-safety-checks    Library is compiled with SAFETY_CHECKS, which
+                                means parameter values passed to LazyGASPI's
+                                functions will be checked for their validity
+                                (ID's out of bounds, nullptrs, etc...) and will
+                                return if parameters are "invalid".
 EOF
 }
 
@@ -51,7 +82,6 @@ GASPI_LIBNAME="GPI2"
 EIGEN="/usr/local/include/eigen3"
 LIB_PATH="$PREFIX/lib"
 INCL_PATH="$PREFIX/include"
-WITH_LOCK=0
 
 while getopts $allopts opt; do
     case $opt in
@@ -123,10 +153,10 @@ while getopts $allopts opt; do
             EIGEN=${OPTARG#*=}
         ;;
         with-lock)
-            WITH_LOCK=1
+            echo "CXXFLAGS+=-DLOCKED_OPERATIONS" >> $MAKE_INC
         ;;
-        with-lock=*)
-            WITH_LOCK=${OPTARG#*=}
+        with-safety-checks)
+            echo "CXXFLAGS+=-DSAFETY_CHECKS" >> $MAKE_INC
         ;;
         esac
     ;;
@@ -159,9 +189,6 @@ if [ $WITH_MPI = 1 ]; then
         echo "CXX=$MPI_PATH/bin/mpicxx" >> $MAKE_INC
         echo "MPI_PATH=$MPI_PATH" >> $MAKE_INC
     fi
-fi
-if [ $WITH_LOCK = 1 ]; then
-    echo "CXXFLAGS+=-DLOCKED_OPERATIONS" >> $MAKE_INC
 fi
 
 echo "WITH_MPI=$WITH_MPI" >> $MAKE_INC

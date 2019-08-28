@@ -13,6 +13,7 @@ gaspi_return_t lock_row_for_write(const LazyGaspiProcessInfo* info, const gaspi_
         r = gaspi_atomic_compare_swap(seg, offset, rank, 0, LOCK_MASK_WRITE, &oldval, GASPI_BLOCK); ERROR_CHECK;
         PRINT_DEBUG_INTERNAL(" | : > Compare and swap saw " << oldval);
     } while(oldval != 0); //While write operations are still locked (Row is being read or row is being written by another proc)
+    return GASPI_SUCCESS;
 }
 
 gaspi_return_t unlock_row_from_write(LazyGaspiProcessInfo* info, const gaspi_segment_id_t seg, const gaspi_offset_t offset,
@@ -20,7 +21,7 @@ gaspi_return_t unlock_row_from_write(LazyGaspiProcessInfo* info, const gaspi_seg
     gaspi_return_t r;
     PRINT_DEBUG_INTERNAL(" | : Unlocking row from segment " << (int)seg << " at offset " << offset << " of rank " << rank << " from WRITE.");
 
-    if(wait_on_q) r = gaspi_wait(q, GASPI_BLOCK); ERROR_CHECK;
+    if(wait_on_q) { r = gaspi_wait(q, GASPI_BLOCK); ERROR_CHECK; }
     info->communicator = 0;
     r = gaspi_write(LAZYGASPI_ID_INFO, offsetof(LazyGaspiProcessInfo, communicator), rank, seg, offset, 
                     sizeofmember(LazyGaspiProcessInfo, communicator), q, GASPI_BLOCK);

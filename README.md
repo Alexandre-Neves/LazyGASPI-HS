@@ -301,6 +301,10 @@ Returns:
 Row operations (`lazygaspi_read`, `lazygaspi_write` and `lazygaspi_prefetch`) can be locked. For that, configuration must be called with the `--with-lock` option.\
 These locks ensure that only one write occurs at a time on a row and when reads are occurring, a write can't happen (and vice-versa).
 
+## Safety Checks
+
+Calls to LazyGASPI functions can be checked for their parameter validity (indices out of bounds, passed nullptr, etc...). For that, configuration must be called with the `--with-safety-checks` option. This validity must be ensured by the application, otherwise the functions will have undefined behaviour.
+
 ## Tests
 
 ### Test 0

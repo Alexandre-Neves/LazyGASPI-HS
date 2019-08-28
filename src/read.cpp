@@ -54,6 +54,7 @@ gaspi_return_t lazygaspi_read(lazygaspi_id_t row_id, lazygaspi_id_t table_id, la
     
     PRINT_DEBUG_INTERNAL("Reading row " << row_id << " of table " << table_id << "...");
 
+    #ifdef SAFETY_CHECKS
     if(row == nullptr){
         PRINT_ON_ERROR(" | Error: read was called with row = nullptr.");
         return GASPI_ERR_NULLPTR;
@@ -66,6 +67,7 @@ gaspi_return_t lazygaspi_read(lazygaspi_id_t row_id, lazygaspi_id_t table_id, la
         PRINT_ON_ERROR(" | Error: clock must be called at least once before prefetch.");
         return GASPI_ERR_NOINIT;
     }
+    #endif
   
     auto min = get_min_age(info->age, slack, info->offset_slack);
 

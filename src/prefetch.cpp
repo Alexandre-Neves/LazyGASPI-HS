@@ -59,7 +59,7 @@ gaspi_return_t lazygaspi_prefetch(lazygaspi_id_t* row_vec, lazygaspi_id_t* table
     
     #ifdef SAFETY_CHECKS
     if(info->age == 0){
-        PRINT_DEBUG_INTERNAL("Error: clock must be called at least once before prefetch.");
+        PRINT_ON_ERROR("Clock must be called at least once before prefetch.");
         return GASPI_ERR_NOINIT;
     }
     #endif
@@ -73,7 +73,7 @@ gaspi_return_t lazygaspi_prefetch(lazygaspi_id_t* row_vec, lazygaspi_id_t* table
                             info->communicator << "...");
         #ifdef SAFETY_CHECKS
         if(*row_vec >= info->table_size || *table_vec >= info->table_amount){
-            PRINT_DEBUG_INTERNAL(" | : > Error: row/table ID was out of bounds.");
+            PRINT_ON_ERROR("Row/table ID was out of bounds.");
             return GASPI_ERR_INV_NUM;
         }
         #endif

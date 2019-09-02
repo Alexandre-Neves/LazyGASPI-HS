@@ -5,7 +5,7 @@
 gaspi_return_t lazygaspi_get_info(LazyGaspiProcessInfo** info){
     #ifdef SAFETY_CHECKS
     if(info == nullptr){
-        PRINT_DEBUG_INTERNAL_COUT("Tried to get info segment with nullptr.");
+        PRINT_ON_ERROR_COUT("Tried to get info segment with nullptr.");
         return GASPI_ERR_NULLPTR;
     }
     #endif

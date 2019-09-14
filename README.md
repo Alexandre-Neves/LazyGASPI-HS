@@ -2,10 +2,11 @@
 
 This is an implementation of the LazyGASPI library where all processes have the same role (**homogeneous**) and data is **sharded** among them.\
 LazyGASPI is the implementation of bounded staleness (https://www.usenix.org/system/files/conference/atc14/atc14-paper-cui.pdf) using GASPI (http://www.gaspi.de/).  
-For installation instructions, see INSTALL.
+For compilation and installation instructions, see INSTALL.
 
 ## Table of Contents
 
+[Compilation](#Compilation)\
 [How it works](#How-it-works)\
 [ID's/Macros, Structures/Typedefs and Functions](#idsMacStrTypFunc)
 - [ID's/Macros](#idsMac)
@@ -38,6 +39,16 @@ For installation instructions, see INSTALL.
 \
 [Tests](#Tests)
  - [Test 0](#Test-0)
+## Compilation
+During compilation, the following macros can be defined (through the `configure.sh` script):
+| Macro | Explanation |
+| ----- | ----------- | 
+| `DEBUG` | Same as defining all of the macros below |
+| <a id="macroDebugInternal"></a>`DEBUG_INTERNAL` | Prints debug information for all LazyGASPI function calls |
+| `DEBUG_ERRORS` | Prints error output whenever an error occurs |
+
+Some macros were left out since they are explained in [Tests](#Tests).
+
 ## How it works
 
 Data (in the form of rows) is sharded and distributed among all processes (see [ShardingOptions](#so)).\
@@ -307,6 +318,13 @@ Calls to LazyGASPI functions can be checked for their parameter validity (indice
 
 ## Tests
 
+The following macros are used by the provided tests. See each specific test to see which macros are actually used.
+
+| Macro | Explanation |
+| ----- | ----------- |
+| <a id="macroDebugPerf"></a>`DEBUG_PERFORMANCE` | Prints time results (time for every iteration, total time, etc...) |
+| <a id="macroDebugTest"></a>`DEBUG_TEST` | Prints detailed debug output. Similar to [`DEBUG_INTERNAL`](#macroDebugInternal) |
+
 ### Test 0
 
 A goal is set when the test is run, by either using the `-g` flag or the `-2` flag. The `-g` flag sets the value of the goal and the `-2` flag sets it to 2 to the power of the option's value. For example, `-g 20` sets the goal to 20 and `-2 4` sets it to 16.\
@@ -317,7 +335,7 @@ The test assigns one table to each process (`ShardingOptions::block_size` will b
 Then, for each row of a table of the current process, the average of the values of all the rows with the same index from other tables (and from the current one) is added to the current value of the row.\
 This is done until all of the rows reach the goal.\
 The program then waits for the other processes to reach their goal.\
-Use --debug-performance to get time results and --debug-test to get more detailed debug output.
+Used macros: [`DEBUG_PERFORMANCE`](#macroDebugPerf), [`DEBUG_TEST`](#macroDebugTest)
 
 
 

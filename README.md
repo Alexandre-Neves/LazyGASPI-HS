@@ -41,6 +41,7 @@ For compilation and installation instructions, see INSTALL.
  - [Test 0](#Test-0)
 ## Compilation
 During compilation, the following macros can be defined (through the `configure.sh` script):
+
 | Macro | Explanation |
 | ----- | ----------- | 
 | `DEBUG` | Same as defining all of the macros below |

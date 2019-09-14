@@ -38,7 +38,7 @@
 
 #define ASSERT(expr, function) ASSERT_OUT(*info->out, expr, function)
 
-#if defined DEBUG || defined DEBUG_INTERNAL || defined DEBUG_GASPI_UTILS
+#if defined DEBUG || defined DEBUG_INTERNAL || defined DEBUG_ERRORS
 #define PRINT_ON_ERROR(msg) { *info->out << "Error [" << __FILE__ << ':' << __LINE__ << "] " << msg << std::endl; }
 #define PRINT_ON_ERROR_COUT(msg) { std::cout << "Error [" << __FILE__ << ':' << __LINE__ << "] " << msg << std::endl; }
 #else

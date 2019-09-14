@@ -44,6 +44,9 @@ Where OPTIONS are:
         --debug-performance     Sets the DEBUG_PERF macro during compilaion. See
                                 documentation for more details.
 
+        --debug-errors          Sets the DEBUG_ERRORS macro during compilation.
+                                See documentation for more details.
+
         --shared,--static       Indicates  if  the  library  will  be shared or 
                                 static. Default is static.
 
@@ -142,6 +145,9 @@ while getopts $allopts opt; do
         ;;
         debug-performance)
             echo "CXXFLAGS+=-DDEBUG_PERF" >> $MAKE_INC
+        ;;
+        debug-errors)
+            echo "CXXFLAGS+=-DDEBUG_ERRORS" >> $MAKE_INC
         ;;
         static)
             LIB_STATIC=1

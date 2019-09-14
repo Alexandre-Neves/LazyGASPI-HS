@@ -12,22 +12,31 @@ gaspi_return_t lock_row_for_read(const LazyGaspiProcessInfo* info, const gaspi_s
     
     PRINT_DEBUG_INTERNAL(" | : Locking row from segment " << (int)seg << " at offset " << offset << " of rank " << rank << " for READ.");
 
-    wait_for_write:
+    wait_for_lock:
     do {
         r = gaspi_atomic_compare_swap(seg, offset, rank, 0, 1, &oldval, GASPI_BLOCK); ERROR_CHECK;
         PRINT_DEBUG_INTERNAL(" | : > Compare and swap saw " << oldval);
-    } while((oldval & LOCK_MASK_WRITE) != 0);   //While row is being written, keep trying to lock
+    } while((oldval & LOCK_MASK_WRITE) != 0 || oldval == LOCK_READ_FULL);   //While row is being written, keep trying to lock
 
-    //Lock was unlocked by writer, but another process became the "first reader" faster. Use fetch&add
+    //Lock was unlocked by writer, but another process was already reading. Use fetch&add
     if(oldval != 0) { 
         PRINT_DEBUG_INTERNAL(" | : > Row was locked for reading before. Increasing lock count to " << oldval + 1 << "...");
         r = gaspi_atomic_fetch_add(seg, offset, rank, 1, &oldval, GASPI_BLOCK); ERROR_CHECK;
+        if(oldval == LOCK_READ_FULL) { 
+            //Fake write lock was set (Read was full before fetch&add). This will not be changed by other processes (supposedly).
+            r = gaspi_atomic_compare_swap(seg, offset, rank, LOCK_MASK_WRITE, LOCK_READ_FULL, &oldval, GASPI_BLOCK); ERROR_CHECK;
+            if(oldval != LOCK_MASK_WRITE){
+                PRINT_ON_ERROR("Tried to undo fake write lock but old value was not a write lock.");
+                return GASPI_ERR_INV_NUM;
+            }
+            goto wait_for_lock;
+        }
         //This conditional can only be true if the following happens:
         //Lock is free for writes (0 at the write bit); Read lock is set (`n` at the read bits); Before fetch&add of this proc, 
         //all `n` readers unlock the lock (becomes 0 again); Another writer process locks (sets write bit to 1)
         if((oldval & LOCK_MASK_WRITE) != 0){
-            PRINT_DEBUG_INTERNAL(" | : > Write lock was placed before read lock could have. Retrying...");
-            goto wait_for_write; 
+            PRINT_DEBUG_INTERNAL(" | : > Write lock was placed before read lock could have been. Retrying...");
+            goto wait_for_lock; 
         }
     }
 

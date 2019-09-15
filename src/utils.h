@@ -60,7 +60,7 @@ typedef unsigned long ulong;
 
 #ifdef LOCKED_OPERATIONS
     #define LOCK_MASK_WRITE (((gaspi_atomic_value_t)1) << (sizeof(gaspi_atomic_value_t) * 8 - 1))
-    #define LOCK_READ_FULL (LOCK_MASK_WRITE - 1)
+    #define LOCK_MASK_READ (LOCK_MASK_WRITE - 1)
 
     struct Lock{ gaspi_atomic_value_t val; };
 

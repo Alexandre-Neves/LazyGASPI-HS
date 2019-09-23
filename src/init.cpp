@@ -40,7 +40,7 @@ gaspi_return_t lazygaspi_init(lazygaspi_id_t table_amount, lazygaspi_id_t table_
     r = gaspi_proc_num(&(info->n)); ERROR_CHECK_COUT;
     r = gaspi_proc_rank(&(info->id)); ERROR_CHECK_COUT;
 
-    #ifdef WITH_MPI
+    #if defined WITH_MPI && defined SAFETY_CHECKS
     if(mpi_rank != info->id) {
         PRINT_ON_ERROR_COUT("MPI and GASPI ranks did not match!");
         return GASPI_ERR_INV_RANK;
@@ -87,6 +87,8 @@ gaspi_return_t lazygaspi_init(lazygaspi_id_t table_amount, lazygaspi_id_t table_
     info->table_amount = table_amount;
     info->table_size = table_size;
     info->offset_slack = true;
+
+    r = lazygaspi_set_max_threads(1); ERROR_CHECK;
 
     r = allocate_segments(info); ERROR_CHECK;
 

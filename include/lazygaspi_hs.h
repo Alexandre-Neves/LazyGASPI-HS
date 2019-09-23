@@ -49,6 +49,8 @@ struct LazyGaspiProcessInfo{
     gaspi_offset_t table_size;
     //The size of a row as defined by the user, in bytes.
     gaspi_size_t row_size;
+    //The maximum number of threads that can be used by any process. Default is 1.
+    unsigned int max_threads;
     //Field used for communication with other segments.
     lazygaspi_age_t communicator;
     //Stream used to output lazygaspi debug messages. Use nullptr to ignore lazygaspi output.
@@ -123,6 +125,18 @@ gaspi_return_t lazygaspi_init(lazygaspi_id_t table_amount, lazygaspi_id_t table_
  *  GASPI_SUCCESS on success, GASPI_ERROR (or another error code) on error, GASPI_TIMEOUT on timeout.
  */
 gaspi_return_t lazygaspi_get_info(LazyGaspiProcessInfo** info);
+
+/** Sets the maximum number of threads per process (any process).
+ *  
+ *  Parameters:
+ *  max_threads - The maximum number of threads.
+ * 
+ *  Returns:
+ *  GASPI_SUCCESS on success, GASPI_ERROR (or another error code) on error, GASPI_TIMEOUT on timeout.
+ *  [Safety Check] GASPI_ERR_INV_NUM will be returned if 0 is passed.
+ *  GASPI_ERR_INV_RANK will be returned if overflow on the read lock cannot be prevented.
+ * */
+gaspi_return_t lazygaspi_set_max_threads(unsigned int max_threads);
 
 /** Fulfills prefetch requests from other ranks. 
  *  Must be called by all processes at the end of each iteration for prefetching to work properly.

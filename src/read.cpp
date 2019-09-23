@@ -17,19 +17,13 @@ gaspi_return_t lock_row_for_read(const LazyGaspiProcessInfo* info, const gaspi_s
     do {
         r = gaspi_atomic_compare_swap(seg, offset, rank, 0, 1, &oldval, GASPI_BLOCK); ERROR_CHECK;
         PRINT_DEBUG_INTERNAL(" | : > Compare and swap saw " << oldval);
-    } while((oldval & LOCK_MASK_WRITE) != 0 || (oldval & LOCK_MASK_READ) >= LOCK_MASK_READ - n);   
+    } while((oldval & LOCK_MASK_WRITE) != 0);   
     //While row is being written or if read lock is at maximum capacity, keep trying to lock 
 
     //Lock was unlocked by writer, but another process was already reading. Use fetch&add
     if(oldval != 0) { 
         PRINT_DEBUG_INTERNAL(" | : > Row was locked for reading before. Increasing lock count to " << oldval + 1 << "...");
         r = gaspi_atomic_fetch_add(seg, offset, rank, 1, &oldval, GASPI_BLOCK); ERROR_CHECK;
-        if((oldval & LOCK_MASK_READ) >= LOCK_MASK_READ - n) { 
-            //Read lock is at maximum capacity. 
-            r = gaspi_atomic_fetch_add(seg, offset, rank, (gaspi_atomic_value_t)-1, &oldval, GASPI_BLOCK); ERROR_CHECK;
-            PRINT_DEBUG_INTERNAL(" | : > Undid read lock since it was at max capacity back to " << oldval << " reading processes.");
-            goto wait_for_lock;
-        }
         //This conditional can only be true if the following happens:
         //Lock is free for writes (0 at the write bit); Read lock is set (`x` at the read bits); Before fetch&add of this proc, 
         //all `x` readers unlock the lock (becomes 0 again); Another writer process locks (sets write bit to 1)

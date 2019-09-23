@@ -12,6 +12,24 @@ gaspi_return_t lazygaspi_get_info(LazyGaspiProcessInfo** info){
     return gaspi_segment_ptr(LAZYGASPI_ID_INFO, (gaspi_pointer_t*)info);
 }
 
+gaspi_return_t lazygaspi_set_max_threads(unsigned int max_threads){
+    LazyGaspiProcessInfo* info;
+    auto r = lazygaspi_get_info(&info); ERROR_CHECK_COUT;
+    #ifdef SAFETY_CHECKS
+    if(max_threads == 0){
+        PRINT_ON_ERROR("Tried to set maximum number of threads to 0.");
+        return GASPI_ERR_INV_NUM;
+    }
+    #endif
+    info->max_threads = max_threads;
+    if(!is_atomic_size_enough(info)){
+        PRINT_ON_ERROR("Amount of total possible threads is too high to prevent overflow on the read lock."
+                       "\nReduce amount of ranks, or maximum threads per rank, or disable LOCKED_OPERATIONS.");
+        return GASPI_ERR_INV_RANK;
+    }
+    return GASPI_SUCCESS;
+}
+
 gaspi_return_t lazygaspi_clock(){
     LazyGaspiProcessInfo* info;
     auto r = lazygaspi_get_info(&info); ERROR_CHECK_COUT;

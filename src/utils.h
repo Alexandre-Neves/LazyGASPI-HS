@@ -163,7 +163,7 @@ static inline lazygaspi_age_t get_prefetch(const LazyGaspiProcessInfo* info, con
 //To prevent overflow
 static inline bool is_atomic_size_enough(LazyGaspiProcessInfo* info){
     #ifdef LOCKED_OPERATIONS
-    return info->n * info->max_threads <= LOCK_MASK_READ;
+    return info->max_threads <= LOCK_MASK_READ / info->n;
     #else
     return true;
     #endif
